@@ -38,11 +38,12 @@ subprojects {
 
     cloudstream {
         // when running through github workflow, GITHUB_REPOSITORY should contain current repository name
-        setRepo(System.getenv("GITHUB_REPOSITORY") ?: "user/repo")
+        setRepo(System.getenv("GITHUB_REPOSITORY") ?: "https://github.com/satishgumudavelli/SatishCloudStreamPlugin")
+        authors = listOf("G.Satish")
     }
 
     android {
-        namespace = "com.example"
+        namespace = "com.gsatish"
 
         defaultConfig {
             minSdk = 21
@@ -78,11 +79,18 @@ subprojects {
         // but you don't need to include any of them if you don't need them.
         // https://github.com/recloudstream/cloudstream/blob/master/app/build.gradle.kts
         implementation(kotlin("stdlib")) // Adds Standard Kotlin Features
-        implementation("com.github.Blatzar:NiceHttp:0.4.11") // HTTP Lib
-        implementation("org.jsoup:jsoup:1.18.3") // HTML Parser
+        implementation("com.github.Blatzar:NiceHttp:0.4.18") // HTTP Lib
+        implementation("org.jsoup:jsoup:1.22.2") // HTML Parser
+
         // IMPORTANT: Do not bump Jackson above 2.13.1, as newer versions will
         // break compatibility on older Android devices.
-        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.1") // JSON Parser
+        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.1")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+        implementation("com.google.code.gson:gson:2.14.0")
+
+
+
     }
 }
 

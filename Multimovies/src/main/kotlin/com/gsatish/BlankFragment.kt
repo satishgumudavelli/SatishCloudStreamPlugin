@@ -1,4 +1,4 @@
-package com.example
+package com.gsatish
 
 import android.annotation.SuppressLint
 import android.content.res.ColorStateList
@@ -21,7 +21,7 @@ import com.lagradost.cloudstream3.utils.UIHelper.colorFromAttribute
 /**
  * A simple [Fragment] subclass.
  */
-class BlankFragment(private val plugin: ExamplePlugin) : BottomSheetDialogFragment() {
+class BlankFragment(private val plugin: MultimoviesPlugin) : BottomSheetDialogFragment() {
 
     // Helper function to get a drawable resource by name
     @SuppressLint("DiscouragedApi")
