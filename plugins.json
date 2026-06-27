@@ -1,22 +1,23 @@
 [
     {
         "iconUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Korduene_Logo.png",
+        "fileHash": "sha256-f598c007b25b049962c7c3b0b44218e8e0f8ceb74d6a795d6b359a54c80f068f",
         "apiVersion": 1,
-        "repositoryUrl": "https://github.com/recloudstream/TestPlugins",
-        "fileSize": 7311,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 27984,
         "status": 1,
         "language": "en",
         "authors": [
-            "Cloudburst",
-            "Luna712"
+            "Satish Gumudavelli"
         ],
         "tvTypes": [
-            "Movie"
+            "Movie",
+            "TvSeries"
         ],
         "version": 1,
-        "internalName": "ExampleProvider",
-        "description": "Lorem ipsum",
-        "url": "https://raw.githubusercontent.com/recloudstream/TestPlugins/builds/ExampleProvider.cs3",
-        "name": "ExampleProvider"
+        "internalName": "Multimovies",
+        "description": "Multimovies ",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/Multimovies.cs3",
+        "name": "Multimovies"
     }
 ]
