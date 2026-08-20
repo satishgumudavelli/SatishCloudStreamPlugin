@@ -1,0 +1,9 @@
+{
+  "name": "SatishCloudStreamPlugin",
+  "description": "Cloudstream plugin repo",
+  "authors": ["satishgumudavelli"],
+  "manifestVersion": 1,
+  "pluginLists": [
+    "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/plugins.json"
+  ]
+}
