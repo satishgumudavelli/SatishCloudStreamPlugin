@@ -107,7 +107,7 @@ object VidboxScraper {
     // Matches the h1 title on a /movie/{id} detail page.
     private val movieTitleRegex = Regex(""""className":"mb-4 text-3xl font-bold md:text-4xl","children":"([^"]+)"""")
     private val movieRatingYearRegex = Regex(
-        """fill-yellow-500 text-yellow-500".*?"span",null,\{"children":"([0-9.]+)"}]]}],\["\$","span",null,\{"children":"(\d{4})"}""",
+        """fill-yellow-500 text-yellow-500".*?"span",null,\{"children":"([0-9.]+)"}\]\]}\],\["\$","span",null,\{"children":"(\d{4})"}""",
         RegexOption.DOT_MATCHES_ALL
     )
     private val movieGenreRegex = Regex(""""span","\d+",\{"className":"rounded-full bg-slate-900[^"]*","children":"([^"]+)"}]""")
