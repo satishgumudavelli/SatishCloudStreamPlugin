@@ -1,0 +1,21 @@
+{
+    "iconUrl": "https://vidbox.vc/logo.png",
+    "fileHash": "sha256-50d05e4f578afdc1e08d72e1361c764ee6c4d0b390df809bc93f6049eb6ebbc4",
+    "apiVersion": 1,
+    "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+    "fileSize": 40362,
+    "status": 1,
+    "language": "en",
+    "authors": [
+        "Satish Gumudavelli"
+    ],
+    "tvTypes": [
+        "Movie",
+        "TvSeries"
+    ],
+    "version": 1,
+    "internalName": "VidboxProvider",
+    "description": "Vidbox - Movies & TV Shows streaming guide",
+    "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/VidboxProvider.cs3",
+    "name": "VidboxProvider"
+}
