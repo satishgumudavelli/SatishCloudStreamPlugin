@@ -1,0 +1,19 @@
+repo.json
+  s_ebccfa11c6bcbf::t_876b40593843e8 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c3385f8480a73a252c1e6dea04563a070dbc8786",
+  "prompts": {},
+  "sessions": {
+    "s_ebccfa11c6bcbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb2ebaf6-a5f6-42e8-a32e-be76959ec2a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
