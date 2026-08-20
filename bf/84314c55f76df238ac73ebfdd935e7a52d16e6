@@ -1,0 +1,19 @@
+plugins.json
+  s_ebccfa11c6bcbf::t_3eae440e4bb0e1 4,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "bf84314c55f76df238ac73ebfdd935e7a52d16e6",
+  "prompts": {},
+  "sessions": {
+    "s_ebccfa11c6bcbf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb2ebaf6-a5f6-42e8-a32e-be76959ec2a5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
