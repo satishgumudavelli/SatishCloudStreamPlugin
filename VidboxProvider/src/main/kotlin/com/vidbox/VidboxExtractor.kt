@@ -130,7 +130,7 @@ object VidboxExtractor {
 
         val epResponse = runCatching { app.get(apiUrl, headers = headers).text }.getOrNull() ?: return
         val data = runCatching { Gson().fromJson(epResponse, VidlinkResponse::class.java) }.getOrNull() ?: return
-        val m3u8 = data.stream.playlist
+        val m3u8 = data.stream?.playlist ?: return
 
         val headersJson = Regex("""[?&]headers=([^&]+)""").find(m3u8)?.groupValues?.get(1)
             ?.let { URLDecoder.decode(it, "UTF-8") }
@@ -170,10 +170,10 @@ object VidboxExtractor {
     }
 
     data class VidlinkResponse(
-        @SerializedName("stream") val stream: VidlinkStream
+        @SerializedName("stream") val stream: VidlinkStream?
     )
 
     data class VidlinkStream(
-        @SerializedName("playlist") val playlist: String
+        @SerializedName("playlist") val playlist: String?
     )
 }
