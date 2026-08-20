@@ -20,7 +20,18 @@ import com.lagradost.cloudstream3.runAllAsync
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.vidbox.VidboxExtractor.invoke111Movies
+import com.vidbox.VidboxExtractor.invoke2Embed
+import com.vidbox.VidboxExtractor.invokeBravo
+import com.vidbox.VidboxExtractor.invokeCinemaos
+import com.vidbox.VidboxExtractor.invokeFrembed
+import com.vidbox.VidboxExtractor.invokeMplay
+import com.vidbox.VidboxExtractor.invokeNxsha
+import com.vidbox.VidboxExtractor.invokePeachify
+import com.vidbox.VidboxExtractor.invokeVideasy
 import com.vidbox.VidboxExtractor.invokeVidlink
+import com.vidbox.VidboxExtractor.invokeVidnest
+import com.vidbox.VidboxExtractor.invokeXpass
 import com.vidbox.VidboxExtractor.invokevidrock
 import org.json.JSONObject
 
@@ -105,6 +116,8 @@ class VidboxProvider : MainAPI() {
                                 id = id,
                                 season = seasonNumber,
                                 episode = eps.optInt("episode_number"),
+                                title = title,
+                                year = year,
                             ).toJson()
                         ) {
                             this.name = eps.optString("name")
@@ -128,7 +141,12 @@ class VidboxProvider : MainAPI() {
             }
         } else {
             val movie = VidboxScraper.scrapeMovieDetail(id) ?: return null
-            newMovieLoadResponse(movie.title, url, TvType.Movie, VidLinkData(id = id).toJson()) {
+            newMovieLoadResponse(
+                movie.title,
+                url,
+                TvType.Movie,
+                VidLinkData(id = id, title = movie.title, year = movie.year).toJson(),
+            ) {
                 this.posterUrl = movie.posterUrl
                 this.backgroundPosterUrl = movie.backdropUrl
                 this.year = movie.year
@@ -149,6 +167,17 @@ class VidboxProvider : MainAPI() {
         runAllAsync(
             { invokevidrock(link.id, link.season, link.episode, callback) },
             { invokeVidlink(link.id, link.season, link.episode, callback) },
+            { invokeVideasy(link.id, link.season, link.episode, link.title, link.year, callback) },
+            { invoke111Movies(link.id, link.season, link.episode, callback) },
+            { invokePeachify(link.id, link.season, link.episode, callback) },
+            { invokeFrembed(link.id, link.season, link.episode, subtitleCallback, callback) },
+            { invokeVidnest(link.id, link.season, link.episode, callback) },
+            { invokeMplay(link.id, link.season, link.episode, callback) },
+            { invokeXpass(link.id, link.season, link.episode, callback) },
+            { invoke2Embed(link.id, link.season, link.episode, callback) },
+            { invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, callback) },
+            { invokeBravo(link.id, link.season, link.episode, callback) },
+            { invokeNxsha(link.id, link.season, link.episode, callback) },
         )
         return true
     }
@@ -157,5 +186,7 @@ class VidboxProvider : MainAPI() {
         val id: Int? = null,
         val season: Int? = null,
         val episode: Int? = null,
+        val title: String? = null,
+        val year: Int? = null,
     )
 }
