@@ -1,0 +1,20 @@
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxExtractor.kt
+  s_1df26ebe79e093::t_3ca905eb3f0f13 133
+  s_1df26ebe79e093::t_d2d76f8ac476b6 173,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "371abc40b6cdcca050c3f0491eae332ac7c6c9b4",
+  "prompts": {},
+  "sessions": {
+    "s_1df26ebe79e093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0549c229-ed9c-4187-a2bc-ae26fa034b0f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
