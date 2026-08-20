@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://vidbox.vc/logo.png",
-        "fileHash": "sha256-e88d3f773ce4463bc14d68ea03c3cce3424827b8189a439e4cd33101036e1eba",
+        "fileHash": "sha256-401c3dcc7a9756e717f6470ca95cef3204f212a4b9283d9383e51db3bb616bdd",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 40515,
+        "fileSize": 41540,
         "status": 1,
         "language": "en",
         "authors": [
