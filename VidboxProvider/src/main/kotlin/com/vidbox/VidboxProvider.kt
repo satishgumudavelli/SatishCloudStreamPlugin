@@ -1,5 +1,6 @@
 package com.vidbox
 
+import android.util.Log
 import com.lagradost.cloudstream3.HomePageResponse
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
@@ -38,6 +39,11 @@ class VidboxProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val result = VidboxScraper.discover(request.data, page)
         val shows = result.results.mapNotNull { it.toSearchResponse() }
+        Log.d(
+            "VidboxProvider",
+            "getMainPage name=${request.name} data=${request.data} page=$page " +
+                "rawResults=${result.results.size} shows=${shows.size} totalPages=${result.totalPages}"
+        )
         return newHomePageResponse(request.name, shows, hasNext = page < result.totalPages)
     }
 
@@ -49,9 +55,15 @@ class VidboxProvider : MainAPI() {
     private fun JSONObject.toSearchResponse(): SearchResponse? {
         val mediaType = optString("media_type").ifEmpty { if (has("first_air_date")) "tv" else "movie" }
         val title = optString("title").ifEmpty { optString("name") }
-        if (title.isEmpty()) return null
+        if (title.isEmpty()) {
+            Log.d("VidboxProvider", "toSearchResponse dropped item with no title/name: $this")
+            return null
+        }
         val id = optInt("id", -1)
-        if (id == -1) return null
+        if (id == -1) {
+            Log.d("VidboxProvider", "toSearchResponse dropped '$title' with no id: $this")
+            return null
+        }
         val poster = optString("poster_path").takeIf { it.isNotBlank() }
             ?.let { "https://image.tmdb.org/t/p/w342$it" }
         val score = optDouble("vote_average", 0.0).let { if (it > 0) Score.from10(it.toString()) else null }
