@@ -1,0 +1,19 @@
+VidboxProvider/build/plugin-entry.json
+  s_1df26ebe79e093::t_34aeb801f83ef7 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5c206b099b1a39760df0d3630e0ebe38aafc2d33",
+  "prompts": {},
+  "sessions": {
+    "s_1df26ebe79e093": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0549c229-ed9c-4187-a2bc-ae26fa034b0f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
