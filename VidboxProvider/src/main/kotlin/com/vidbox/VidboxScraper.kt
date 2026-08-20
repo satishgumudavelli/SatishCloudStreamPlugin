@@ -107,11 +107,11 @@ object VidboxScraper {
     // Matches the h1 title on a /movie/{id} detail page.
     private val movieTitleRegex = Regex(""""className":"mb-4 text-3xl font-bold md:text-4xl","children":"([^"]+)"""")
     private val movieRatingYearRegex = Regex(
-        """fill-yellow-500 text-yellow-500".*?"span",null,\{"children":"([0-9.]+)"}[\]][\]]}[\]],\["\$","span",null,\{"children":"(\d{4})"}""",
+        """fill-yellow-500 text-yellow-500".*?"span",null,\x7B"children":"([0-9.]+)"\x7D\x5D\x5D\x7D\x5D,\x5B"\$","span",null,\x7B"children":"(\d{4})"\x7D""",
         RegexOption.DOT_MATCHES_ALL
     )
-    private val movieGenreRegex = Regex(""""span","\d+",\{"className":"rounded-full bg-slate-900[^"]*","children":"([^"]+)"}]""")
-    private val movieOverviewRegex = Regex(""""p",null,\{"className":"mb-6 text-lg","children":"([^"]*)"}]""")
+    private val movieGenreRegex = Regex(""""span","\d+",\x7B"className":"rounded-full bg-slate-900[^"]*","children":"([^"]+)"\x7D\x5D""")
+    private val movieOverviewRegex = Regex(""""p",null,\x7B"className":"mb-6 text-lg","children":"([^"]*)"\x7D\x5D""")
     private val posterRegex = Regex("""image\.tmdb\.org%2Ft%2Fp%2Fw342%2F([^&"]+)""")
     private val backdropRegex = Regex("""image\.tmdb\.org%2Ft%2Fp%2Foriginal%2F([^&"]+)""")
 
