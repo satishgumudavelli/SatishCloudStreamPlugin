@@ -10,6 +10,11 @@ const val vidboxMainUrl = "https://vidbox.vc"
 const val vidboxTmdbKey = "ef311eb0b9b07b9c73e9fb0a732cc150"
 const val tmdbApi = "https://api.themoviedb.org/3"
 
+// vidbox.vc 403s requests with no browser User-Agent (default OkHttp UA reads as a bot to it).
+val vidboxHeaders = mapOf(
+    "User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+)
+
 // Query params for vidbox's own browse/filter endpoint (/api/search/discover), one per home
 // row - these are exactly the "view all" links the site itself uses for each row.
 val homeRows = listOf(
@@ -59,7 +64,7 @@ object VidboxScraper {
 
     /** Fetches [url] and returns its server-rendered React payload, unescaped and concatenated. */
     suspend fun fetchRscText(url: String): String {
-        val html = app.get(url).text
+        val html = app.get(url, headers = vidboxHeaders).text
         return rscBlockRegex.findAll(html).joinToString("\n") { unescapeJs(it.groupValues[1]) }
     }
 
@@ -97,7 +102,7 @@ object VidboxScraper {
     /** vidbox's own browse/search/filter API - backs every "view all" row and the search box. */
     suspend fun discover(params: String, page: Int): DiscoverPage {
         val json = runCatching {
-            JSONObject(app.get("$vidboxMainUrl/api/search/discover?$params&page=$page").text)
+            JSONObject(app.get("$vidboxMainUrl/api/search/discover?$params&page=$page", headers = vidboxHeaders).text)
         }.getOrNull() ?: return DiscoverPage(emptyList(), 0)
         val results = json.optJSONArray("results")
         val items = results?.let { (0 until it.length()).mapNotNull { i -> it.optJSONObject(i) } } ?: emptyList()
