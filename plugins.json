@@ -1,26 +1,5 @@
 [
     {
-        "iconUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2f/Korduene_Logo.png",
-        "fileHash": "sha256-f598c007b25b049962c7c3b0b44218e8e0f8ceb74d6a795d6b359a54c80f068f",
-        "apiVersion": 1,
-        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 27984,
-        "status": 1,
-        "language": "en",
-        "authors": [
-            "Satish Gumudavelli"
-        ],
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "version": 1,
-        "internalName": "Multimovies",
-        "description": "Multimovies ",
-        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/Multimovies.cs3",
-        "name": "Multimovies"
-    },
-    {
         "iconUrl": "https://vidbox.vc/logo.png",
         "fileHash": "sha256-50d05e4f578afdc1e08d72e1361c764ee6c4d0b390df809bc93f6049eb6ebbc4",
         "apiVersion": 1,
