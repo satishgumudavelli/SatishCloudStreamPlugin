@@ -20,7 +20,6 @@ import com.lagradost.cloudstream3.runAllAsync
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.vidbox.VidboxExtractor.invokeMoviesApi
 import com.vidbox.VidboxExtractor.invokeVidlink
 import com.vidbox.VidboxExtractor.invokevidrock
 import org.json.JSONObject
@@ -150,7 +149,6 @@ class VidboxProvider : MainAPI() {
         runAllAsync(
             { invokevidrock(link.id, link.season, link.episode, callback) },
             { invokeVidlink(link.id, link.season, link.episode, callback) },
-            { invokeMoviesApi(link.id, link.season, link.episode, callback) },
         )
         return true
     }

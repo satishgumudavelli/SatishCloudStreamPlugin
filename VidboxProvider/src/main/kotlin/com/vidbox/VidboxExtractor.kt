@@ -10,7 +10,6 @@ import com.lagradost.cloudstream3.base64Encode
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
@@ -22,7 +21,6 @@ import javax.crypto.spec.SecretKeySpec
 
 const val vidrock = "https://vidrock.ru"
 const val vidlink = "https://vidlink.pro"
-const val moviesClubApi = "https://moviesapi.club"
 
 object VidboxExtractor {
 
@@ -145,28 +143,6 @@ object VidboxExtractor {
 
         val m3u8Url = m3u8.substringBefore("?")
         generateM3u8("Vidlink", m3u8Url, referer, headers = headers).forEach(callback)
-    }
-
-    suspend fun invokeMoviesApi(
-        id: Int?,
-        season: Int? = null,
-        episode: Int? = null,
-        callback: (ExtractorLink) -> Unit
-    ) {
-        if (id == null) return
-        val href = if (season == null) "$moviesClubApi/movie/$id" else "$moviesClubApi/tv/$id-$season-$episode"
-        val pageDoc = runCatching { app.get(href).document }.getOrNull() ?: return
-        val iframeElement = pageDoc.selectFirst("iframe[src], iframe[data-src]") ?: return
-        val iframeSrc = iframeElement.attr("src").ifEmpty { iframeElement.attr("data-src") }
-        if (iframeSrc.isEmpty()) return
-        val iframeDoc = runCatching { app.get(iframeSrc).document }.getOrNull() ?: return
-        val scriptData = iframeDoc.select("script")
-            .firstOrNull { it.data().contains("function(p,a,c,k,e,d)") }?.data()
-            ?: iframeDoc.selectFirst("script")?.data() ?: return
-        val unpacked = runCatching { getAndUnpack(scriptData) }.getOrNull() ?: scriptData
-        val m3u8 = Regex("""sources:\[\{file:"(.*?)"""").find(unpacked)?.groupValues?.get(1) ?: return
-
-        generateM3u8("MoviesApi Club", m3u8, iframeSrc, headers = mapOf("Referer" to iframeSrc)).forEach(callback)
     }
 
     data class VidlinkResponse(
