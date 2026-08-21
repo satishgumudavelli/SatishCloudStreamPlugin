@@ -10,6 +10,7 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
+import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
@@ -69,6 +70,7 @@ object VidboxExtractor {
         tmdbId: Int?,
         season: Int? = null,
         episode: Int? = null,
+        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
         if (tmdbId == null) return
@@ -90,31 +92,47 @@ object VidboxExtractor {
         }
 
         val epResponse = runCatching { app.get(apiUrl, headers = headers).text }.getOrNull() ?: return
-        val data = runCatching { Gson().fromJson(epResponse, VidlinkResponse::class.java) }.getOrNull() ?: return
-        val m3u8 = data.stream?.playlist ?: return
+        val stream = runCatching { JSONObject(epResponse).optJSONObject("stream") }.getOrNull() ?: return
 
-        val headersJson = Regex("""[?&]headers=([^&]+)""").find(m3u8)?.groupValues?.get(1)
-            ?.let { URLDecoder.decode(it, "UTF-8") }
-
-        var referer = "$vidlink/"
-        if (!headersJson.isNullOrBlank()) {
-            runCatching {
-                val obj = Gson().fromJson(headersJson, JsonObject::class.java)
-                obj["referer"]?.asString?.let { referer = it }
+        stream.optJSONArray("captions")?.let { captions ->
+            for (i in 0 until captions.length()) {
+                val cap = captions.optJSONObject(i) ?: continue
+                val subUrl = cap.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val lang = cap.optString("language", "Unknown")
+                subtitleCallback(SubtitleFile(lang, subUrl))
             }
         }
 
-        val m3u8Url = m3u8.substringBefore("?")
-        generateM3u8("Vidlink", m3u8Url, referer, headers = headers).forEach(callback)
+        // "hls" streams carry a playlist URL; "file" streams carry a per-resolution quality map instead.
+        val playlist = stream.optString("playlist").takeIf { it.isNotBlank() }
+        if (playlist != null) {
+            val headersJson = Regex("""[?&]headers=([^&]+)""").find(playlist)?.groupValues?.get(1)
+                ?.let { URLDecoder.decode(it, "UTF-8") }
+
+            var referer = "$vidlink/"
+            if (!headersJson.isNullOrBlank()) {
+                runCatching {
+                    val obj = Gson().fromJson(headersJson, JsonObject::class.java)
+                    obj["referer"]?.asString?.let { referer = it }
+                }
+            }
+
+            val m3u8Url = playlist.substringBefore("?")
+            generateM3u8("Vidlink", m3u8Url, referer, headers = headers).forEach(callback)
+            return
+        }
+
+        val qualities = stream.optJSONObject("qualities") ?: return
+        qualities.keys().asSequence().toList().forEach { key ->
+            val fileUrl = qualities.optJSONObject(key)?.optString("url")?.takeIf { it.isNotBlank() } ?: return@forEach
+            callback(
+                newExtractorLink("Vidlink", "Vidlink ${key}p", fileUrl, ExtractorLinkType.VIDEO) {
+                    this.quality = key.toIntOrNull() ?: Qualities.Unknown.value
+                    this.headers = headers
+                }
+            )
+        }
     }
-
-    data class VidlinkResponse(
-        @SerializedName("stream") val stream: VidlinkStream?
-    )
-
-    data class VidlinkStream(
-        @SerializedName("playlist") val playlist: String?
-    )
 
     // -------------------------------------------------------------------------------------------
     // Nxsha (nxsha.space) - every request/response body is CryptoJS.AES.encrypt(json, passphrase),
@@ -211,13 +229,29 @@ object VidboxExtractor {
     private const val showsStApi = "https://api.shows.st"
     private const val vidloveOrigin = "https://vidlove.cc"
 
-    suspend fun invoke111Movies(tmdbId: Int?, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) {
+    suspend fun invoke111Movies(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
         if (tmdbId == null) return
         val url = if (season == null) "$showsStApi/movie?id=$tmdbId&mode=json"
         else "$showsStApi/tv?id=$tmdbId&season=$season&episode=$episode&mode=json"
         val headers = mapOf("Referer" to "$vidloveOrigin/", "Origin" to vidloveOrigin)
 
         val json = runCatching { JSONObject(app.get(url, headers = headers).text) }.getOrNull() ?: return
+
+        json.optJSONArray("subtitles")?.let { subs ->
+            for (i in 0 until subs.length()) {
+                val sub = subs.optJSONObject(i) ?: continue
+                val subUrl = sub.optString("file").takeIf { it.isNotBlank() } ?: continue
+                val lang = sub.optString("label", "Unknown")
+                subtitleCallback(SubtitleFile(lang, subUrl))
+            }
+        }
+
         val streamUrl = json.optJSONObject("source")?.optString("url")?.takeIf { it.isNotBlank() } ?: return
         generateM3u8("111Movies", streamUrl, "", headers = headers).forEach(callback)
     }
@@ -243,7 +277,13 @@ object VidboxExtractor {
         return String(cipher.doFinal(ct + tag), Charsets.UTF_8)
     }
 
-    suspend fun invokePeachify(tmdbId: Int?, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) {
+    suspend fun invokePeachify(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
         if (tmdbId == null) return
         val headers = mapOf("Referer" to "https://peachify.top/", "Origin" to "https://peachify.top")
 
@@ -254,6 +294,17 @@ object VidboxExtractor {
             val sourcesArr = json.optJSONArray("sources") ?: return@amap
             val encrypted = json.optBoolean("isEncrypted", false)
 
+            json.optJSONArray("subtitles")?.let { subs ->
+                for (i in 0 until subs.length()) {
+                    val sub = subs.optJSONObject(i) ?: continue
+                    val subUrl = sub.optString("url").takeIf { it.isNotBlank() }
+                        ?: sub.optString("file").takeIf { it.isNotBlank() } ?: continue
+                    val lang = sub.optString("lang").takeIf { it.isNotBlank() }
+                        ?: sub.optString("label", "Unknown")
+                    subtitleCallback(SubtitleFile(lang, subUrl))
+                }
+            }
+
             for (i in 0 until sourcesArr.length()) {
                 val src = sourcesArr.optJSONObject(i) ?: continue
                 val rawUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
@@ -261,15 +312,20 @@ object VidboxExtractor {
                     runCatching { decryptPeachifyUrl(rawUrl) }.getOrNull() ?: continue
                 } else rawUrl
                 val dub = src.optString("dub", "")
+                val quality = src.optInt("quality", 0)
+                val srcHeaders = src.optJSONObject("headers")?.let { h ->
+                    h.keys().asSequence().associateWith { k -> h.optString(k) }
+                } ?: headers
 
                 if (src.optString("type") == "mp4") {
                     callback(
                         newExtractorLink("Peachify-$server", "Peachify [$server] $dub", finalUrl, ExtractorLinkType.VIDEO) {
-                            this.headers = headers
+                            this.headers = srcHeaders
+                            if (quality > 0) this.quality = quality
                         }
                     )
                 } else {
-                    generateM3u8("Peachify-$server", finalUrl, "", headers = headers).forEach(callback)
+                    generateM3u8("Peachify-$server", finalUrl, "", headers = srcHeaders).forEach(callback)
                 }
             }
         }
@@ -328,25 +384,49 @@ object VidboxExtractor {
             val json = runCatching { JSONObject(app.get(url).text) }.getOrNull() ?: return@amap
             val data = json.optString("data").takeIf { it.isNotBlank() } ?: return@amap
             val decoded = runCatching { JSONObject(vidnestDecode(data)) }.getOrNull() ?: return@amap
-            val streams = decoded.optJSONArray("streams") ?: return@amap
 
-            for (i in 0 until streams.length()) {
-                val s = streams.optJSONObject(i) ?: continue
-                val streamUrl = s.optString("url").takeIf { it.isNotBlank() } ?: continue
-                val lang = s.optString("language", "")
-                val refHeaders = s.optJSONObject("headers")?.optString("Referer")
-                    ?.takeIf { it.isNotBlank() }?.let { mapOf("Referer" to it) } ?: emptyMap()
-
-                if (s.optString("type") == "mp4") {
-                    callback(
-                        newExtractorLink("Vidnest-$provider", "Vidnest [$provider] $lang", streamUrl, ExtractorLinkType.VIDEO) {
-                            this.headers = refHeaders
-                        }
-                    )
-                } else {
-                    generateM3u8("Vidnest-$provider", streamUrl, "", headers = refHeaders).forEach(callback)
+            val streams = decoded.optJSONArray("streams")
+            if (streams != null) {
+                for (i in 0 until streams.length()) {
+                    val s = streams.optJSONObject(i) ?: continue
+                    emitVidnestStream(provider, s, callback)
                 }
+                return@amap
             }
+
+            // Some providers (videasy, buzz, nextgencloudfabric) return one flat stream object
+            // instead of a "streams" array - {url, hls?, headers?} or {all_urls:[mirror,...]}.
+            val urls = decoded.optJSONArray("all_urls")?.let { arr ->
+                (0 until arr.length()).mapNotNull { arr.optString(it).takeIf(String::isNotBlank) }
+            } ?: decoded.optString("url").takeIf { it.isNotBlank() }?.let { listOf(it) } ?: return@amap
+
+            val refHeaders = decoded.optJSONObject("headers")?.let { h ->
+                h.keys().asSequence().associateWith { k -> h.optString(k) }
+            } ?: decoded.optString("referer").takeIf { it.isNotBlank() }?.let { mapOf("Referer" to it) }
+            ?: emptyMap()
+
+            urls.forEach { streamUrl ->
+                generateM3u8("Vidnest-$provider", streamUrl, "", headers = refHeaders).forEach(callback)
+            }
+        }
+    }
+
+    private suspend fun emitVidnestStream(provider: String, s: JSONObject, callback: (ExtractorLink) -> Unit) {
+        val streamUrl = s.optString("url").takeIf { it.isNotBlank() } ?: return
+        val lang = s.optString("language", "")
+        val quality = s.optInt("quality", 0)
+        val refHeaders = s.optJSONObject("headers")?.optString("Referer")
+            ?.takeIf { it.isNotBlank() }?.let { mapOf("Referer" to it) } ?: emptyMap()
+
+        if (s.optString("type") == "mp4") {
+            callback(
+                newExtractorLink("Vidnest-$provider", "Vidnest [$provider] $lang", streamUrl, ExtractorLinkType.VIDEO) {
+                    this.headers = refHeaders
+                    if (quality > 0) this.quality = quality
+                }
+            )
+        } else {
+            generateM3u8("Vidnest-$provider", streamUrl, "", headers = refHeaders).forEach(callback)
         }
     }
 

@@ -166,10 +166,10 @@ class VidboxProvider : MainAPI() {
         val link = parseJson<VidLinkData>(data)
         runAllAsync(
             { invokevidrock(link.id, link.season, link.episode, callback) },
-            { invokeVidlink(link.id, link.season, link.episode, callback) },
+            { invokeVidlink(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeVideasy(link.id, link.season, link.episode, link.title, link.year, callback) },
-            { invoke111Movies(link.id, link.season, link.episode, callback) },
-            { invokePeachify(link.id, link.season, link.episode, callback) },
+            { invoke111Movies(link.id, link.season, link.episode, subtitleCallback, callback) },
+            { invokePeachify(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeFrembed(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeVidnest(link.id, link.season, link.episode, callback) },
             { invokeMplay(link.id, link.season, link.episode, callback) },
