@@ -1,0 +1,14 @@
+plugins.json
+  h_2f2e0daf8435ba 4,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "60e38a8e76c2e05b7d511bd441c9a19445473b28",
+  "prompts": {},
+  "humans": {
+    "h_2f2e0daf8435ba": {
+      "author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
