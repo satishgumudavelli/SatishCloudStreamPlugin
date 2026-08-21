@@ -12,6 +12,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getAndUnpack
+import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONArray
@@ -245,8 +246,9 @@ object VidboxExtractor {
             for (i in 0 until sources.length()) {
                 val src = sources.optJSONObject(i) ?: continue
                 val srcUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
-                // "quality" is a free-form label ("1080p", "Vimeos", "Hindi", ...) - only use it when it's a resolution.
-                val quality = Regex("""\d+""").find(src.optString("quality"))?.value?.toIntOrNull()
+                // "quality" is a free-form label ("1080p", "Vimeos", "Hindi", ...) - getQualityFromName
+                // parses the resolution ones and falls back to Unknown for anything else.
+                val quality = getQualityFromName(src.optString("quality"))
                 generateM3u8("Videasy-$provider", srcUrl, "", quality = quality).forEach(callback)
             }
         }
