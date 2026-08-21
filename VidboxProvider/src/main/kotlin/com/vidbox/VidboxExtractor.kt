@@ -167,8 +167,9 @@ object VidboxExtractor {
 
         (0 until servers.length()).toList().amap { i ->
             val scraper = servers.optJSONObject(i)?.optString("scraper")?.takeIf { it.isNotBlank() } ?: return@amap
+            // Omitting ex_lang returns every available language/quality variant in one call instead
+            // of locking the response to a single hardcoded language.
             val sourcesObj = JSONObject(baseObjStr).apply {
-                put("ex_lang", "en")
                 put("provider", scraper)
             }
             val sourcesResp = runCatching { app.get("$nxshaApi/api/sources?q=${nxshaEncode(sourcesObj)}").text }.getOrNull() ?: return@amap
@@ -176,8 +177,22 @@ object VidboxExtractor {
             val sources = runCatching { nxshaDecode(sourcesHash).optJSONArray("sources") }.getOrNull() ?: return@amap
 
             for (s in 0 until sources.length()) {
-                val url = sources.optJSONObject(s)?.optString("url")?.takeIf { it.isNotBlank() } ?: continue
-                generateM3u8("Nxsha-$scraper", url, "", headers = headers).forEach(callback)
+                val src = sources.optJSONObject(s) ?: continue
+                val url = src.optString("url").takeIf { it.isNotBlank() } ?: continue
+                // "label"/"quality" doubles as either a resolution ("MAIN") or a dub language ("Hindi")
+                // depending on the scraper - either way it must be in the name or same-scraper variants collapse.
+                val label = src.optString("label").takeIf { it.isNotBlank() } ?: src.optString("quality", "")
+                val suffix = if (label.isNotBlank()) "-$label" else ""
+
+                if (src.optString("type") == "mp4") {
+                    callback(
+                        newExtractorLink("Nxsha-$scraper$suffix", "Nxsha [$scraper] $label", url, ExtractorLinkType.VIDEO) {
+                            this.headers = headers
+                        }
+                    )
+                } else {
+                    generateM3u8("Nxsha-$scraper$suffix", url, "", headers = headers).forEach(callback)
+                }
             }
         }
     }
@@ -195,6 +210,7 @@ object VidboxExtractor {
         episode: Int?,
         title: String?,
         year: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
         if (tmdbId == null || title.isNullOrBlank()) return
@@ -214,11 +230,24 @@ object VidboxExtractor {
 
             val body = runCatching { app.get("$speedraceApi/$provider/sources-with-title?$qs").text }.getOrNull() ?: return@amap
             val decoded = runCatching { MvmCipher.decode(body, seed, tmdbId) }.getOrNull() ?: return@amap
-            val sources = runCatching { JSONObject(decoded).optJSONArray("sources") }.getOrNull() ?: return@amap
+            val json = runCatching { JSONObject(decoded) }.getOrNull() ?: return@amap
 
+            json.optJSONArray("subtitles")?.let { subs ->
+                for (i in 0 until subs.length()) {
+                    val sub = subs.optJSONObject(i) ?: continue
+                    val subUrl = sub.optString("url").takeIf { it.isNotBlank() } ?: continue
+                    val lang = sub.optString("lang").takeIf { it.isNotBlank() } ?: sub.optString("language", "Unknown")
+                    subtitleCallback(SubtitleFile(lang, subUrl))
+                }
+            }
+
+            val sources = json.optJSONArray("sources") ?: return@amap
             for (i in 0 until sources.length()) {
-                val srcUrl = sources.optJSONObject(i)?.optString("url")?.takeIf { it.isNotBlank() } ?: continue
-                generateM3u8("Videasy-$provider", srcUrl, "").forEach(callback)
+                val src = sources.optJSONObject(i) ?: continue
+                val srcUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
+                // "quality" is a free-form label ("1080p", "Vimeos", "Hindi", ...) - only use it when it's a resolution.
+                val quality = Regex("""\d+""").find(src.optString("quality"))?.value?.toIntOrNull()
+                generateM3u8("Videasy-$provider", srcUrl, "", quality = quality).forEach(callback)
             }
         }
     }
@@ -520,6 +549,7 @@ object VidboxExtractor {
         episode: Int?,
         title: String?,
         year: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
         if (tmdbId == null) return
@@ -548,7 +578,28 @@ object VidboxExtractor {
             runCatching { JSONObject(pt) }.getOrNull() ?: return
         } else json
 
-        // Response shape after decrypt wasn't fully pinned down live - check the likely spots.
+        // Confirmed live shape: {"name": <providerName>, "sources": {...}, "captions": [...]}.
+        // "sources" came back empty for every title probed, so its populated shape is still a guess -
+        // handled as both an object (key -> url/quality) and the older array assumption below.
+        resolved.optJSONArray("captions")?.let { caps ->
+            for (i in 0 until caps.length()) {
+                val cap = caps.optJSONObject(i) ?: continue
+                val subUrl = cap.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val lang = cap.optString("language").takeIf { it.isNotBlank() } ?: cap.optString("label", "Unknown")
+                subtitleCallback(SubtitleFile(lang, subUrl))
+            }
+        }
+
+        resolved.optJSONObject("sources")?.let { sourcesObj ->
+            sourcesObj.keys().asSequence().toList().forEach { key ->
+                val entry = sourcesObj.opt(key)
+                val srcUrl = (entry as? JSONObject)?.optString("url")?.takeIf { it.isNotBlank() }
+                    ?: (entry as? String)?.takeIf { it.isNotBlank() }
+                if (srcUrl != null) generateM3u8("Cinemaos-$key", srcUrl, "", headers = headers).forEach(callback)
+            }
+            if (sourcesObj.length() > 0) return
+        }
+
         val streamUrl = resolved.optJSONObject("source")?.optString("url")?.takeIf { it.isNotBlank() }
             ?: resolved.optString("url").takeIf { it.isNotBlank() }
             ?: resolved.optJSONObject("stream")?.optString("playlist")?.takeIf { it.isNotBlank() }

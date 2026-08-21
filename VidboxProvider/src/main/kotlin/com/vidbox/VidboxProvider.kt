@@ -167,7 +167,7 @@ class VidboxProvider : MainAPI() {
         runAllAsync(
             { invokevidrock(link.id, link.season, link.episode, callback) },
             { invokeVidlink(link.id, link.season, link.episode, subtitleCallback, callback) },
-            { invokeVideasy(link.id, link.season, link.episode, link.title, link.year, callback) },
+            { invokeVideasy(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
             { invoke111Movies(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokePeachify(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeFrembed(link.id, link.season, link.episode, subtitleCallback, callback) },
@@ -175,7 +175,7 @@ class VidboxProvider : MainAPI() {
             { invokeMplay(link.id, link.season, link.episode, callback) },
             { invokeXpass(link.id, link.season, link.episode, callback) },
             { invoke2Embed(link.id, link.season, link.episode, callback) },
-            { invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, callback) },
+            { invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
             { invokeBravo(link.id, link.season, link.episode, callback) },
             { invokeNxsha(link.id, link.season, link.episode, callback) },
         )
