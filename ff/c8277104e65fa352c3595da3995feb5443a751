@@ -1,0 +1,29 @@
+CinemaOsProvider/src/main/kotlin/com/cinemaos/CinemaOsExtractor.kt
+  s_56025504f5ef53::t_f73bd0f1585cfb 30-34
+TmdbProvider/src/main/kotlin/com/tmdb/DomainResolver.kt
+  s_56025504f5ef53::t_d81677fdbe05a6 1-46
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbProvider.kt
+  s_56025504f5ef53::t_c566576869e6bc 158
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbCrypto.kt
+  s_56025504f5ef53::t_18b81900a6520f 5,24-28
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbExtractor.kt
+  s_56025504f5ef53::t_f634bbbd9e5d13 12-15,17-20,22,28,30,32-35,56,59,61-68,70-92,95-101
+  s_56025504f5ef53::t_a17c21dc5dd3ff 11,16,46
+  s_56025504f5ef53::t_d3459bd047a344 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ffc8277104e65fa352c3595da3995feb5443a751",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
