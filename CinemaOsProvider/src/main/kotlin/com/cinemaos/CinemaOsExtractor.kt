@@ -105,17 +105,31 @@ object CinemaOsExtractor {
             val sourcesObj = resolved.optJSONObject("sources") ?: return@amap
             sourcesObj.keys().asSequence().toList().forEach { serverName ->
                 val entry = sourcesObj.optJSONObject(serverName) ?: return@forEach
-                val srcUrl = entry.optString("url").takeIf { it.isNotBlank() } ?: return@forEach
                 val label = entry.optString("server").takeIf { it.isNotBlank() } ?: serverName
 
-                if (entry.optString("type") == "hls" || srcUrl.contains(".m3u8", ignoreCase = true)) {
-                    generateM3u8("CinemaOS-$serverName", srcUrl, "", headers = headers).forEach(callback)
+                suspend fun emit(srcUrl: String, type: String, qualityTag: String) {
+                    val name = "CinemaOS [$label]" + if (qualityTag.isNotBlank()) " $qualityTag" else ""
+                    if (type == "hls" || srcUrl.contains(".m3u8", ignoreCase = true)) {
+                        generateM3u8("CinemaOS-$serverName$qualityTag", srcUrl, "", headers = headers).forEach(callback)
+                    } else {
+                        callback(
+                            newExtractorLink("CinemaOS-$serverName$qualityTag", name, srcUrl, ExtractorLinkType.VIDEO) {
+                                this.headers = headers
+                            }
+                        )
+                    }
+                }
+
+                val flatUrl = entry.optString("url").takeIf { it.isNotBlank() }
+                if (flatUrl != null) {
+                    emit(flatUrl, entry.optString("type"), "")
                 } else {
-                    callback(
-                        newExtractorLink("CinemaOS-$serverName", "CinemaOS [$label]", srcUrl, ExtractorLinkType.VIDEO) {
-                            this.headers = headers
-                        }
-                    )
+                    val qualities = entry.optJSONObject("qualities") ?: return@forEach
+                    qualities.keys().asSequence().toList().forEach { q ->
+                        val q0 = qualities.optJSONObject(q) ?: return@forEach
+                        val qUrl = q0.optString("url").takeIf { it.isNotBlank() } ?: return@forEach
+                        emit(qUrl, q0.optString("type"), "-$q")
+                    }
                 }
             }
         }
