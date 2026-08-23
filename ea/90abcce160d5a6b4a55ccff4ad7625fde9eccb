@@ -1,0 +1,22 @@
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxExtractor.kt
+  s_56025504f5ef53::t_97dc44e72a0c52 366-370,387-390,392
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbExtractor.kt
+  s_56025504f5ef53::t_f0addaf1674ff4 11-13,15-27,29,43-51,53-56
+  s_56025504f5ef53::t_63c660a1e84939 7,14,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ea90abcce160d5a6b4a55ccff4ad7625fde9eccb",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
