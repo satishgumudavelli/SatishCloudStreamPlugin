@@ -135,8 +135,8 @@ object CinemaOsExtractor {
     //
     // Live-verified: 14 real streams (mixed DASH .mpd and MP4, several dub languages) for one
     // movie. TV support (season/episode as plain query params, not part of the hash - the hash
-    // payload has never included them even pre-rename) is untested against a live TV capture -
-    // flagging rather than guessing wrong.
+    // payload has never included them even pre-rename) confirmed via a live TV capture too
+    // (?type=tv&season=1&episode=1 alongside the same unchanged _vh shape).
     // -------------------------------------------------------------------------------------------
     private const val cinemaosV2ProHashSecret = "a53ce07ac6250a232ec81d256d3a9db8e399f883cfc5370995388b683882f572"
 
