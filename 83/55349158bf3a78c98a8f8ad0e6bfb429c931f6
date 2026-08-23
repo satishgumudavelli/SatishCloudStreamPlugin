@@ -1,0 +1,36 @@
+VidboxProvider/src/main/kotlin/com/vidbox/DomainResolver.kt
+  s_56025504f5ef53::t_5ebff583c9bdc2 1-46
+domains.json
+  s_56025504f5ef53::t_6a82d94f6dc7f2 3-4
+docs/PLUGIN_GUIDE.md
+  s_56025504f5ef53::t_b9e574288887d1 262
+  s_56025504f5ef53::t_3c92993aa5c816 184-186
+  s_56025504f5ef53::t_8dda780bc55ec2 308
+  s_56025504f5ef53::t_9f91f9f0616180 217-224
+  s_56025504f5ef53::t_8214829ce7382f 284
+  s_56025504f5ef53::t_671f5b821576b2 159-183,187-216,225-226
+  s_56025504f5ef53::t_7b6858b7fc3998 1-95,107-108,111-118,121-134,146-147,158,227-261,263-283,285-307,309-317
+  s_56025504f5ef53::t_40a86fb43c4227 96-106,109-110
+  s_56025504f5ef53::t_5559b451476839 329-339
+  s_56025504f5ef53::t_7f9f114520007d 318-328
+  s_56025504f5ef53::t_1cf5e4d021fd58 119-120,135-145,148-157
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxScraper.kt
+  s_56025504f5ef53::t_06d56334dec273 42-47,49
+  s_56025504f5ef53::t_9bc13e3cebb0c2 10-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8355349158bf3a78c98a8f8ad0e6bfb429c931f6",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
