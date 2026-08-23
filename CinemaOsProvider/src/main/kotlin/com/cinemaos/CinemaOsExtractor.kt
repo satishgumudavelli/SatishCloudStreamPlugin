@@ -44,13 +44,6 @@ private val cinemaosScrapers = listOf(
     "h0", "mb2", "q4", "s3", "vc", "vn", "z2",
 )
 
-// Server names known (from community CinemaOS extractors) to be unreliable/region-locked mirrors.
-// Filtered by name since providerv5's own response carries no reliability signal of its own.
-private val cinemaosBlockedServers = setOf(
-    "Maphisto", "Noah", "Bolt", "Zeus", "Nexus", "Apollo", "Kratos", "Flick", "Hollywood",
-    "Flash", "Ophim", "Bollywood", "Apex", "Universe", "Hindi", "Bengali", "Tamil", "Telugu",
-)
-
 object CinemaOsExtractor {
 
     private fun cinemaosSecret(tmdbId: Int, imdbId: String, season: Int?, episode: Int?): String {
@@ -116,9 +109,6 @@ object CinemaOsExtractor {
             sourcesObj.keys().asSequence().toList().forEach { serverName ->
                 val entry = sourcesObj.optJSONObject(serverName) ?: return@forEach
                 val label = entry.optString("server").takeIf { it.isNotBlank() } ?: serverName
-                if (cinemaosBlockedServers.any { it.equals(label, ignoreCase = true) || it.equals(serverName, ignoreCase = true) }) {
-                    return@forEach
-                }
 
                 suspend fun emit(srcUrl: String, type: String, qualityTag: String) {
                     if (!seenUrls.add(srcUrl)) return
