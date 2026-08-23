@@ -44,6 +44,13 @@ private val cinemaosScrapers = listOf(
     "h0", "mb2", "q4", "s3", "vc", "vn", "z2",
 )
 
+// Server names known (from community CinemaOS extractors) to be unreliable/region-locked mirrors.
+// Filtered by name since providerv5's own response carries no reliability signal of its own.
+private val cinemaosBlockedServers = setOf(
+    "Maphisto", "Noah", "Bolt", "Zeus", "Nexus", "Apollo", "Kratos", "Flick", "Hollywood",
+    "Flash", "Ophim", "Bollywood", "Apex", "Universe", "Hindi", "Bengali", "Tamil", "Telugu",
+)
+
 object CinemaOsExtractor {
 
     private fun cinemaosSecret(tmdbId: Int, imdbId: String, season: Int?, episode: Int?): String {
@@ -69,6 +76,9 @@ object CinemaOsExtractor {
         val type = if (season == null) "movie" else "tv"
         val secret = cinemaosSecret(tmdbId, imdbId, season, episode)
         val headers = mapOf("Referer" to "$base/watch/$type/$tmdbId")
+        // 34 scrapers run in parallel and can return the same mirror/URL more than once - dedupe
+        // across all of them so only unique sources reach the user.
+        val seenUrls = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
         cinemaosScrapers.amap { scraper ->
             val params = mutableListOf(
@@ -106,8 +116,12 @@ object CinemaOsExtractor {
             sourcesObj.keys().asSequence().toList().forEach { serverName ->
                 val entry = sourcesObj.optJSONObject(serverName) ?: return@forEach
                 val label = entry.optString("server").takeIf { it.isNotBlank() } ?: serverName
+                if (cinemaosBlockedServers.any { it.equals(label, ignoreCase = true) || it.equals(serverName, ignoreCase = true) }) {
+                    return@forEach
+                }
 
                 suspend fun emit(srcUrl: String, type: String, qualityTag: String) {
+                    if (!seenUrls.add(srcUrl)) return
                     val name = "CinemaOS [$label]" + if (qualityTag.isNotBlank()) " $qualityTag" else ""
                     if (type == "hls" || srcUrl.contains(".m3u8", ignoreCase = true)) {
                         generateM3u8("CinemaOS-$serverName$qualityTag", srcUrl, "", headers = headers).forEach(callback)
