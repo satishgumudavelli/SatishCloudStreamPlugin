@@ -21,16 +21,46 @@ private val tmdbHeaders = mapOf(
     "User-Agent" to "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 )
 
-// TMDB's own well-known browse buckets - one per home row.
+// Mirrors cinemaos.tech's own homepage sections (Top 10 Movies/Shows, Trending in the UK,
+// Streaming Providers, Top Rated, Browse by Genre) via TMDB's equivalent endpoints, since the
+// site's own feeds for these aren't exposed as a client-callable API - see the comment on
+// tmdbKey above. Row "data" is "path" or "path?extraQueryParams" (fetchList splits on the first
+// "?"), matching this repo's other providers rather than TMDB's raw path/query split.
+private const val watchRegion = "US" // TMDB's with_watch_providers filter requires a watch_region
 val homeRows = listOf(
-    "trending/movie/week" to "Trending Movies",
-    "trending/tv/week" to "Trending TV Shows",
-    "movie/now_playing" to "Now Playing",
-    "movie/popular" to "Popular Movies",
-    "tv/popular" to "Popular TV Shows",
+    "trending/movie/day" to "Top 10 Movies",
+    "trending/tv/day" to "Top 10 Shows",
+    "discover/movie?region=GB&sort_by=popularity.desc" to "Trending in the UK",
+    "discover/movie?with_watch_providers=8&watch_region=$watchRegion" to "Netflix",
+    "discover/movie?with_watch_providers=350&watch_region=$watchRegion" to "Apple TV+",
+    "discover/movie?with_watch_providers=9&watch_region=$watchRegion" to "Amazon Prime Video",
+    "discover/movie?with_watch_providers=15&watch_region=$watchRegion" to "Hulu",
+    "discover/movie?with_watch_providers=1899&watch_region=$watchRegion" to "Max",
+    "discover/movie?with_watch_providers=531&watch_region=$watchRegion" to "Paramount+",
+    "discover/movie?with_watch_providers=337&watch_region=$watchRegion" to "Disney+",
+    // Shudder's TMDB watch-provider id wasn't live-verified (TMDB was unreachable from the
+    // research sandbox) - double check this against a live /watch/providers/movie response.
+    "discover/movie?with_watch_providers=502&watch_region=$watchRegion" to "Shudder",
     "movie/top_rated" to "Top Rated Movies",
     "tv/top_rated" to "Top Rated TV Shows",
-    "tv/on_the_air" to "On The Air",
+    "discover/movie?with_genres=28" to "Action Movies",
+    "discover/movie?with_genres=12" to "Adventure Movies",
+    "discover/movie?with_genres=16" to "Animation Movies",
+    "discover/movie?with_genres=35" to "Comedy Movies",
+    "discover/movie?with_genres=80" to "Crime Movies",
+    "discover/movie?with_genres=99" to "Documentary Movies",
+    "discover/movie?with_genres=18" to "Drama Movies",
+    "discover/movie?with_genres=10751" to "Family Movies",
+    "discover/movie?with_genres=14" to "Fantasy Movies",
+    "discover/movie?with_genres=36" to "History Movies",
+    "discover/movie?with_genres=27" to "Horror Movies",
+    "discover/movie?with_genres=10402" to "Music Movies",
+    "discover/movie?with_genres=9648" to "Mystery Movies",
+    "discover/movie?with_genres=10749" to "Romance Movies",
+    "discover/movie?with_genres=878" to "Sci-Fi Movies",
+    "discover/movie?with_genres=53" to "Thriller Movies",
+    "discover/movie?with_genres=10752" to "War Movies",
+    "discover/movie?with_genres=37" to "Western Movies",
 )
 
 object CinemaOsScraper {
@@ -47,7 +77,9 @@ object CinemaOsScraper {
     data class ListPage(val results: List<JSONObject>, val totalPages: Int)
 
     private suspend fun fetchList(path: String, page: Int, extraParams: String = ""): ListPage {
-        val url = "$tmdbApi/$path?api_key=$tmdbKey&page=$page$extraParams"
+        val (basePath, query) = path.split("?", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+        val url = "$tmdbApi/$basePath?api_key=$tmdbKey&page=$page" +
+            (if (query.isNotEmpty()) "&$query" else "") + extraParams
         val json = runCatching { JSONObject(app.get(url, headers = tmdbHeaders).text) }.getOrElse {
             return ListPage(emptyList(), 0)
         }
