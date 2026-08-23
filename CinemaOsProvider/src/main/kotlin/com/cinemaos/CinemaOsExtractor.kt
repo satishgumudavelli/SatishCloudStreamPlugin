@@ -27,8 +27,11 @@ private const val cinemaosGt = "6775dc8e702c08643385273df088c14952c590ddda02d14f
 
 // Confirmed valid against the live site (others 502 - the endpoint validates scraper names
 // against a server-side allowlist); there are more we haven't found yet since the site fetches
-// its scraper list client-side rather than embedding it in the static JS chunks.
-private val cinemaosScrapers = listOf("vf", "rive")
+// its scraper list client-side rather than embedding it in the static JS chunks. Note: this
+// endpoint is unrelated to the FebBox-token-gated "Premium/Standard/Free" server picker in the
+// site's own player UI (that one requires the end user's own FebBox account, not something we
+// can resolve anonymously) - "vf"/"rive"/"v2" are a separate, smaller set of anonymous sources.
+private val cinemaosScrapers = listOf("vf", "rive", "v2")
 
 object CinemaOsExtractor {
 

@@ -15,23 +15,9 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
-import com.lagradost.cloudstream3.runAllAsync
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.tmdb.TmdbExtractor.invoke111Movies
-import com.tmdb.TmdbExtractor.invoke2Embed
-import com.tmdb.TmdbExtractor.invokeBravo
-import com.tmdb.TmdbExtractor.invokeCinemaos
-import com.tmdb.TmdbExtractor.invokeFrembed
-import com.tmdb.TmdbExtractor.invokeMplay
-import com.tmdb.TmdbExtractor.invokeNxsha
-import com.tmdb.TmdbExtractor.invokePeachify
-import com.tmdb.TmdbExtractor.invokeVideasy
-import com.tmdb.TmdbExtractor.invokeVidlink
-import com.tmdb.TmdbExtractor.invokeVidnest
-import com.tmdb.TmdbExtractor.invokeXpass
-import com.tmdb.TmdbExtractor.invokevidrock
 import org.json.JSONObject
 
 /**
@@ -169,21 +155,7 @@ class TmdbProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val link = parseJson<VidLinkData>(data)
-        runAllAsync(
-            { invokevidrock(link.id, link.season, link.episode, callback) },
-            { invokeVidlink(link.id, link.season, link.episode, subtitleCallback, callback) },
-            { invokeVideasy(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
-            { invoke111Movies(link.id, link.season, link.episode, subtitleCallback, callback) },
-            { invokePeachify(link.id, link.season, link.episode, subtitleCallback, callback) },
-            { invokeFrembed(link.id, link.season, link.episode, subtitleCallback, callback) },
-            { invokeVidnest(link.id, link.season, link.episode, callback) },
-            { invokeMplay(link.id, link.season, link.episode, callback) },
-            { invokeXpass(link.id, link.season, link.episode, callback) },
-            { invoke2Embed(link.id, link.season, link.episode, callback) },
-            { invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
-            { invokeBravo(link.id, link.season, link.episode, callback) },
-            { invokeNxsha(link.id, link.season, link.episode, callback) },
-        )
+        TmdbExtractor.resolve(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
         return true
     }
 
