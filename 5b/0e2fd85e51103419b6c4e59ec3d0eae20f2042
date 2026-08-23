@@ -1,0 +1,24 @@
+cinemaos_sample_log.py
+  s_56025504f5ef53::t_99812f20b53e53 68-73
+  s_56025504f5ef53::t_a803cb7176bd87 1-46,50-67,74-143
+  s_56025504f5ef53::t_c2d48e381134a8 47-49
+cinemaos_sample_output.log
+  s_56025504f5ef53::t_0dc4859ebb8cd5 3-8,32-41
+  s_56025504f5ef53::t_15e6919bbd77a5 1-2,9-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "5b0e2fd85e51103419b6c4e59ec3d0eae20f2042",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
