@@ -1,0 +1,23 @@
+CinemaOsProvider/src/main/kotlin/com/cinemaos/CinemaOsProvider.kt
+  s_56025504f5ef53::t_5b8e2b228583a1 159-162
+  s_56025504f5ef53::t_560bcccfc4be05 18
+CinemaOsProvider/src/main/kotlin/com/cinemaos/CinemaOsExtractor.kt
+  s_56025504f5ef53::t_93afa648a57ae3 43-44
+  s_56025504f5ef53::t_840b15af79000f 123-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d3a0c28f711b3a59a5b4e7f2a40692eb296ea21d",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
