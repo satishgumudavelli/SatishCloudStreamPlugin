@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://cinemaos.tech/favicon.ico",
-        "fileHash": "sha256-c2eaeda93a14437692876f9d5b0f1a10b7cf5a2c8bae6e03d19c1c81b90b4ad7",
+        "fileHash": "sha256-e28b4a5bfd5fd4e2203a46b92fb5236b44faf2d65c5f446b79e9c5387488cb44",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 46248,
+        "fileSize": 45828,
         "status": 1,
         "language": "en",
         "authors": [
