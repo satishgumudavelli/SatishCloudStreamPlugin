@@ -1,0 +1,21 @@
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxScraper.kt
+  s_56025504f5ef53::t_358a5b456b6bee 63
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxProvider.kt
+  s_56025504f5ef53::t_9b0b1aafbde314 49,56,61,74,77,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d9aeee0004d3d2a999d59b1a61c53646cb08634f",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
