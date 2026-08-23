@@ -83,6 +83,7 @@ class CinemaOsProvider : MainAPI() {
             val genres = tv.optJSONArray("genres")
                 ?.let { arr -> (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("name") } }
             val year = tv.optString("first_air_date").split("-").firstOrNull()?.toIntOrNull()
+            val imdbId = tv.optJSONObject("external_ids")?.optString("imdb_id")?.takeIf { it.isNotBlank() }
 
             val episodes = tv.optJSONArray("seasons")?.let { seasons ->
                 (0 until seasons.length()).mapNotNull { i ->
@@ -93,6 +94,7 @@ class CinemaOsProvider : MainAPI() {
                         newEpisode(
                             VidLinkData(
                                 id = id,
+                                imdbId = imdbId,
                                 season = seasonNumber,
                                 episode = eps.optInt("episode_number"),
                                 title = title,
@@ -128,12 +130,13 @@ class CinemaOsProvider : MainAPI() {
             val genres = movie.optJSONArray("genres")
                 ?.let { arr -> (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.optString("name") } }
             val year = movie.optString("release_date").split("-").firstOrNull()?.toIntOrNull()
+            val imdbId = movie.optString("imdb_id").takeIf { it.isNotBlank() }
 
             newMovieLoadResponse(
                 title,
                 url,
                 TvType.Movie,
-                VidLinkData(id = id, title = title, year = year).toJson(),
+                VidLinkData(id = id, imdbId = imdbId, title = title, year = year).toJson(),
             ) {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = backdrop
@@ -152,12 +155,13 @@ class CinemaOsProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val link = parseJson<VidLinkData>(data)
-        CinemaOsExtractor.invokeCinemaos(link.id, link.season, link.episode, subtitleCallback, callback)
+        CinemaOsExtractor.invokeCinemaos(link.id, link.imdbId, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
         return true
     }
 
     data class VidLinkData(
         val id: Int? = null,
+        val imdbId: String? = null,
         val season: Int? = null,
         val episode: Int? = null,
         val title: String? = null,

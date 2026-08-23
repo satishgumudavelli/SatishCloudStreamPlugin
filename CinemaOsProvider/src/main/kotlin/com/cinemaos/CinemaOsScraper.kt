@@ -95,8 +95,12 @@ object CinemaOsScraper {
     suspend fun movieDetail(id: Int): JSONObject? =
         runCatching { JSONObject(app.get("$tmdbApi/movie/$id?api_key=$tmdbKey", headers = tmdbHeaders).text) }.getOrNull()
 
+    // append_to_response=external_ids: unlike movies, TV's base response has no imdb_id field -
+    // CinemaOsExtractor needs it for the providerv5/scrape secret.
     suspend fun tvDetail(id: Int): JSONObject? =
-        runCatching { JSONObject(app.get("$tmdbApi/tv/$id?api_key=$tmdbKey", headers = tmdbHeaders).text) }.getOrNull()
+        runCatching {
+            JSONObject(app.get("$tmdbApi/tv/$id?api_key=$tmdbKey&append_to_response=external_ids", headers = tmdbHeaders).text)
+        }.getOrNull()
 
     suspend fun seasonEpisodes(tvId: Int, seasonNumber: Int): List<JSONObject> {
         val json = app.get("$tmdbApi/tv/$tvId/season/$seasonNumber?api_key=$tmdbKey", headers = tmdbHeaders).text
