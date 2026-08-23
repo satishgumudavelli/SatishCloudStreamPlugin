@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://cinemaos.tech/favicon.ico",
-        "fileHash": "sha256-7120e70980e43d0297396ecbbbfcf921316f7e6248f26fdfd7aa0550a1e3ae7e",
+        "fileHash": "sha256-73ea1e0f28e41075ecdd0ce772a81e01a577593ad7cbdc6710b04eddffcc0899",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 35261,
+        "fileSize": 36446,
         "status": 3,
         "language": "en",
         "authors": [
@@ -19,6 +19,27 @@
         "description": "CinemaOS - Movies & TV Shows streaming guide",
         "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/CinemaOsProvider.cs3",
         "name": "CinemaOsProvider"
+    },
+    {
+        "iconUrl": "https://www.themoviedb.org/assets/2/apple-touch-icon-57ed4b3b0450fd5e9a0c20f34e814b82adaa1085c79bdde2f00ca3ea3ecc7b8b.png",
+        "fileHash": "sha256-56913176570a1e921c5efa0e8be3d2e283f472bac0c6d6c385beea4810a0364e",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 74759,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "Satish Gumudavelli"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "TmdbProvider",
+        "description": "TMDB - Movies & TV Shows streaming guide",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/TmdbProvider.cs3",
+        "name": "TmdbProvider"
     },
     {
         "iconUrl": "https://vidbox.vc/logo.png",
