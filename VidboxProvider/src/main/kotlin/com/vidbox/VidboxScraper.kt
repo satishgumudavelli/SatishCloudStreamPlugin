@@ -1,10 +1,7 @@
 package com.vidbox
 
-import android.util.Log
 import com.lagradost.cloudstream3.app
 import org.json.JSONObject
-
-private const val TAG = "VidboxScraper"
 
 const val vidboxMainUrl = "https://vidbox.vc"
 
@@ -69,11 +66,6 @@ object VidboxScraper {
     suspend fun fetchRscText(url: String): String {
         val response = app.get(url, headers = vidboxHeaders)
         val html = response.text
-        val blockCount = rscBlockRegex.findAll(html).count()
-        Log.d(TAG, "fetchRscText url=$url code=${response.code} htmlLen=${html.length} rscBlocks=$blockCount")
-        if (blockCount == 0) {
-            Log.d(TAG, "fetchRscText no RSC blocks found, htmlSnippet=${html.take(500)}")
-        }
         return rscBlockRegex.findAll(html).joinToString("\n") { unescapeJs(it.groupValues[1]) }
     }
 
@@ -112,17 +104,13 @@ object VidboxScraper {
     suspend fun discover(params: String, page: Int): DiscoverPage {
         val url = "$vidboxMainUrl/api/search/discover?$params&page=$page"
         val response = runCatching { app.get(url, headers = vidboxHeaders) }.getOrElse {
-            Log.d(TAG, "discover url=$url request threw: $it")
             return DiscoverPage(emptyList(), 0)
         }
-        Log.d(TAG, "discover url=$url code=${response.code} bodyLen=${response.text.length}")
         val json = runCatching { JSONObject(response.text) }.getOrElse {
-            Log.d(TAG, "discover url=$url JSON parse failed: $it bodySnippet=${response.text.take(500)}")
             return DiscoverPage(emptyList(), 0)
         }
         val results = json.optJSONArray("results")
         val items = results?.let { (0 until it.length()).mapNotNull { i -> it.optJSONObject(i) } } ?: emptyList()
-        Log.d(TAG, "discover url=$url resultsInJson=${results?.length() ?: -1} items=${items.size}")
         return DiscoverPage(items, json.optInt("total_pages", page))
     }
 
