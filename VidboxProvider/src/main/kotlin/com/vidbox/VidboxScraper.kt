@@ -7,9 +7,10 @@ const val vidboxMainUrl = "https://vidbox.vc"
 
 // domains.json lives on `master` (fetched fresh every resolve, not baked into the .cs3) so a
 // domain rotation can go live by editing this file alone, no plugin rebuild/republish needed.
-private const val domainsJsonUrl =
+// Shared across providers, keyed by "name" - add an entry for another provider's domain(s) rather
+// than a separate file.
+const val domainsJsonUrl =
     "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/master/domains.json"
-private const val vidboxDomainName = "vidbox"
 
 // vidbox.vc's own TMDB key, lifted from its client bundle (common.*.js) - used only where
 // vidbox itself has no server-side endpoint at all (per-season episode lists).
@@ -38,34 +39,14 @@ val homeRows = listOf(
 
 object VidboxScraper {
 
-    @Volatile
-    private var resolvedMainUrl: String? = null
+    private val domainResolver = DomainResolver(
+        domainsJsonUrl = domainsJsonUrl,
+        targetName = "vidbox",
+        fallbackDomain = vidboxMainUrl.removePrefix("https://"),
+        headers = vidboxHeaders,
+    )
 
-    /** Every domain listed under [targetName] in domains.json, in listed order (first = preferred). */
-    private suspend fun getDomainsByName(targetName: String): List<String> {
-        val json = runCatching { JSONObject(app.get(domainsJsonUrl).text) }.getOrNull() ?: return emptyList()
-        val domains = json.optJSONArray("domains") ?: return emptyList()
-        return (0 until domains.length()).mapNotNull { i ->
-            val item = domains.optJSONObject(i) ?: return@mapNotNull null
-            item.optString("domain").takeIf {
-                it.isNotBlank() && item.optString("name").equals(targetName, ignoreCase = true)
-            }
-        }
-    }
-
-    private suspend fun isReachable(domain: String): Boolean =
-        runCatching { app.get("https://$domain", headers = vidboxHeaders).isSuccessful }.getOrDefault(false)
-
-    /**
-     * First reachable domain.json entry for vidbox, resolved once per process and cached.
-     * Falls back to [vidboxMainUrl] if the domain list can't be fetched or nothing in it responds.
-     */
-    suspend fun resolveMainUrl(): String {
-        resolvedMainUrl?.let { return it }
-        val candidates = getDomainsByName(vidboxDomainName).ifEmpty { listOf(vidboxMainUrl.removePrefix("https://")) }
-        val chosen = candidates.firstOrNull { isReachable(it) } ?: candidates.first()
-        return "https://$chosen".also { resolvedMainUrl = it }
-    }
+    suspend fun resolveMainUrl(): String = domainResolver.resolveMainUrl()
 
     private val rscBlockRegex = Regex("""self\.__next_f\.push\(\[1,"(.*?)"\]\)""", RegexOption.DOT_MATCHES_ALL)
 

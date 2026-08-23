@@ -1,5 +1,6 @@
 {
   "domains": [
-    { "name": "vidbox", "domain": "vidbox.vc" }
+    { "name": "vidbox", "domain": "vidbox.vc" },
+    { "name": "cinemaos", "domain": "cinemaos.tech" }
   ]
 }
