@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://cinemaos.tech/favicon.ico",
-        "fileHash": "sha256-73ea1e0f28e41075ecdd0ce772a81e01a577593ad7cbdc6710b04eddffcc0899",
+        "fileHash": "sha256-0074968682b52d2d8800e29144882aff3d8931cc66c5f2c5a81dc6243c1858dd",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 36446,
+        "fileSize": 36472,
         "status": 3,
         "language": "en",
         "authors": [
@@ -22,10 +22,10 @@
     },
     {
         "iconUrl": "https://www.themoviedb.org/assets/2/apple-touch-icon-57ed4b3b0450fd5e9a0c20f34e814b82adaa1085c79bdde2f00ca3ea3ecc7b8b.png",
-        "fileHash": "sha256-56913176570a1e921c5efa0e8be3d2e283f472bac0c6d6c385beea4810a0364e",
+        "fileHash": "sha256-1794c34ce197f804d7d5de50aa890a40e3fc36e39d82a326cbe57753c12f980f",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 74759,
+        "fileSize": 34036,
         "status": 1,
         "language": "en",
         "authors": [
