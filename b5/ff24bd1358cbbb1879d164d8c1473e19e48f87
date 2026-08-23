@@ -1,0 +1,31 @@
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbScraper.kt
+  s_56025504f5ef53::t_fc7098fe7679ec 1-65
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbCrypto.kt
+  s_56025504f5ef53::t_cf8928939a2033 1-181
+TmdbProvider/build.gradle.kts
+  s_56025504f5ef53::t_13d41669823d2a 1-26
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbProviderPlugin.kt
+  s_56025504f5ef53::t_db86593a467db1 1-11
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbProvider.kt
+  s_56025504f5ef53::t_3605be40f9b9e4 1-197
+TmdbProvider/src/main/kotlin/com/tmdb/TmdbExtractor.kt
+  s_56025504f5ef53::t_f4b3ad3b9429b7 1-638
+CinemaOsProvider/src/main/kotlin/com/cinemaos/CinemaOsScraper.kt
+  s_56025504f5ef53::t_f1dd64617c4341 24-29,31-43,46-63,80-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "b5ff24bd1358cbbb1879d164d8c1473e19e48f87",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
