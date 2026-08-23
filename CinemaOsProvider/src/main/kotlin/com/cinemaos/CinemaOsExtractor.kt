@@ -40,6 +40,8 @@ private const val cinemaosGateToken = "6775dc8e702c08643385273df088c14952c590ddd
 private val cinemaosScrapers = listOf(
     "va", "vf", "rive", "v2", "vdn", "zm", "lm", "vs", "vl", "vz", "cs", "mt", "hexa",
     "ms", "vp", "ts", "vy", "fx", "py", "fz", "fs", "cz", "fn", "sc", "vdy", "nhd", "vx",
+    // Found in a live capture of the site's own "CinemaOS V3" player - human names unknown.
+    "h0", "mb2", "q4", "s3", "vc", "vn", "z2",
 )
 
 object CinemaOsExtractor {
@@ -115,6 +117,73 @@ object CinemaOsExtractor {
                         }
                     )
                 }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // /api/cinemaosv2pro - a second, independent CinemaOS backend (MovieBox-sourced DASH/MP4),
+    // found live in a capture of the site's own "CinemaOS V2" player. Simpler than providerv5:
+    // one request returns every stream at once, no imdbId, no per-scraper loop, no AES-GCM.
+    // Just a per-minute anti-scraping hash (`_vh`) - same djb2-style fold this exact site used
+    // for its older (now-renamed) /api/cinemaosv2 endpoint, confirmed by porting that algorithm
+    // unchanged and having it work first try: only the endpoint name (cinemaosv2 -> cinemaosv2pro)
+    // and hash param name (h -> _vh) had changed, not the secret or the fold itself.
+    //
+    // GET {base}/api/cinemaosv2pro?tmdbId=X&type=movie|tv&title=T&_vh=hash-bucket36&_ck=...
+    // -> {"streams": [{"name": "MovieBox (English dub) 1080p [DASH]", "title", "url", "quality"}, ...]}
+    //
+    // Live-verified: 14 real streams (mixed DASH .mpd and MP4, several dub languages) for one
+    // movie. TV support (season/episode as plain query params, not part of the hash - the hash
+    // payload has never included them even pre-rename) is untested against a live TV capture -
+    // flagging rather than guessing wrong.
+    // -------------------------------------------------------------------------------------------
+    private const val cinemaosV2ProHashSecret = "a53ce07ac6250a232ec81d256d3a9db8e399f883cfc5370995388b683882f572"
+
+    private fun cinemaosV2ProHash(tmdbId: Int, minuteBucket: Long): String {
+        val payload = "$tmdbId:$minuteBucket:$cinemaosV2ProHashSecret"
+        var x = 0
+        for (c in payload) {
+            x = (x shl 5) - x + c.code
+        }
+        val hex = kotlin.math.abs(x.toLong()).toString(16).padStart(8, '0')
+        return "$hex-${minuteBucket.toString(36)}"
+    }
+
+    suspend fun invokeCinemaosV2Pro(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        title: String?,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        if (tmdbId == null) return
+        val base = CinemaOsScraper.resolveMainUrl()
+        val type = if (season == null) "movie" else "tv"
+        val minuteBucket = System.currentTimeMillis() / 60_000
+        val vh = cinemaosV2ProHash(tmdbId, minuteBucket)
+        val headers = mapOf("Referer" to "$base/watch/$type/$tmdbId")
+
+        val params = mutableListOf("tmdbId" to "$tmdbId", "type" to type, "title" to (title ?: ""), "_vh" to vh, "_ck" to cinemaosGateToken)
+        if (season != null) params.add("season" to "$season")
+        if (episode != null) params.add("episode" to "$episode")
+        val qs = params.joinToString("&") { (k, v) -> "$k=${URLEncoder.encode(v, "UTF-8")}" }
+
+        val response = runCatching { app.get("$base/api/cinemaosv2pro?$qs", headers = headers).text }.getOrNull() ?: return
+        val streams = runCatching { JSONObject(response).optJSONArray("streams") }.getOrNull() ?: return
+
+        for (i in 0 until streams.length()) {
+            val stream = streams.optJSONObject(i) ?: continue
+            val srcUrl = stream.optString("url").takeIf { it.isNotBlank() } ?: continue
+            val name = stream.optString("name").takeIf { it.isNotBlank() } ?: "CinemaOS"
+
+            when {
+                srcUrl.contains(".m3u8", ignoreCase = true) ->
+                    generateM3u8("CinemaOS-v2pro-$i", srcUrl, "", headers = headers).forEach(callback)
+                srcUrl.contains(".mpd", ignoreCase = true) ->
+                    callback(newExtractorLink("CinemaOS-v2pro-$i", name, srcUrl, ExtractorLinkType.DASH) { this.headers = headers })
+                else ->
+                    callback(newExtractorLink("CinemaOS-v2pro-$i", name, srcUrl, ExtractorLinkType.VIDEO) { this.headers = headers })
             }
         }
     }

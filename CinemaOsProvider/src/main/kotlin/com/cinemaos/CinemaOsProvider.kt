@@ -15,6 +15,7 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
+import com.lagradost.cloudstream3.runAllAsync
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -155,7 +156,10 @@ class CinemaOsProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val link = parseJson<VidLinkData>(data)
-        CinemaOsExtractor.invokeCinemaos(link.id, link.imdbId, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
+        runAllAsync(
+            { CinemaOsExtractor.invokeCinemaos(link.id, link.imdbId, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { CinemaOsExtractor.invokeCinemaosV2Pro(link.id, link.season, link.episode, link.title, callback) },
+        )
         return true
     }
 
