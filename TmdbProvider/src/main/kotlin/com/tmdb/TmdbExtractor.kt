@@ -4,40 +4,31 @@ import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-import com.lagradost.cloudstream3.utils.getQualityFromName
-import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 import org.json.JSONObject
 
 /**
- * cinemaos.tech/.in's real native source pipeline - ported from CinemaOsProvider's
- * CinemaOsExtractor (same domains.json DomainResolver target). See CinemaOsExtractor.kt for full
- * detail on how this was reverse-engineered from the site's own client JS.
+ * TmdbProvider resolves nothing itself - it only ever calls CloudStream's own loadExtractor,
+ * which dispatches to whichever of the ~250 extractors already built into the app (Uqload, Voe,
+ * Dood, StreamWish, MixDrop, Playmogo, Vido, ...) is registered for a given URL's host.
+ *
+ * The one piece TmdbProvider needs is something that turns a tmdbId into a URL actually landing
+ * on one of those hosts. Checked this against the real bundled extractor class list (unzipped
+ * ~/.gradle/caches/cloudstream/cloudstream/cloudstream.jar, the exact dependency this repo
+ * compiles against) before trusting it: none of the well-known TMDB-aggregator sites (vidsrc.*,
+ * 2embed, vidlink, moviesapi, ...) have a matching bundled extractor - those are themselves
+ * scrapers a plugin has to write from scratch (as VidboxProvider's other ~12 sources do).
+ * frembed.casa is different: it's a redirect aggregator - its own API hands back a 302 straight
+ * to the underlying embed host, and *those* hosts (uqload.vc, playmogo.com, vido.lol, ...) are
+ * exactly the kind loadExtractor already knows how to handle. Live-verified: /api/films and
+ * /api/series' response shape has drifted from what VidboxExtractor's own invokeFrembed expects
+ * (no more "links" array - now flat "link"/"link1".."link7"[+"vostfr" audio variants] fields,
+ * each a path to /api/stream?...&server=<field> that 302s to the real embed host) - updated for
+ * that here rather than copying the stale version.
  */
-private const val cinemaosFallbackDomain = "cinemaos.tech"
-
-// Shared across providers in this repo, keyed by "name" - see VidboxProvider's DomainResolver.kt.
-private const val domainsJsonUrl =
-    "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/master/domains.json"
-
-private val cinemaosSources = mapOf(
-    "ms" to "MovSrc", "vp" to "Vapor", "vr" to "VidRock", "va" to "VidApi", "ts" to "TouStream",
-    "vy" to "Videasy", "fx" to "FlaxMovies", "py" to "Peachify", "mrsub" to "Miruro (Sub)",
-    "mrdub" to "Miruro (Dub)", "tesub" to "TryEmbed (Sub)", "tedub" to "TryEmbed (Dub)",
-    "mt" to "MeowTV", "cs" to "CineSu", "iy" to "Icefy", "vl" to "VidLink", "vz" to "VidZee",
-    "nhd" to "nhdapi", "vdn" to "VidNest", "zm" to "02Movie", "vx" to "VixSrc", "fz" to "FlixTrz",
-    "vs" to "VidSrc", "vdy" to "Vidify", "lm" to "LookMovie", "fs" to "FShareTV", "cz" to "Cinezo",
-    "fn" to "Fsonic", "sc" to "Screenscape",
-)
+private const val frembedApi = "https://frembed.casa"
 
 object TmdbExtractor {
-
-    private val domainResolver = DomainResolver(
-        domainsJsonUrl = domainsJsonUrl,
-        targetName = "cinemaos",
-        fallbackDomain = cinemaosFallbackDomain,
-    )
 
     suspend fun resolve(
         tmdbId: Int?,
@@ -49,59 +40,20 @@ object TmdbExtractor {
         callback: (ExtractorLink) -> Unit
     ) {
         if (tmdbId == null) return
-        val base = domainResolver.resolveMainUrl()
-        val type = if (season == null) "movie" else "tv"
+        val headers = mapOf("Referer" to "$frembedApi/", "Origin" to frembedApi)
+        val url = if (season == null) "$frembedApi/api/films?id=$tmdbId&idType=tmdb"
+        else "$frembedApi/api/series?id=$tmdbId&idType=tmdb&sa=$season&epi=$episode"
 
-        cinemaosSources.keys.toList().amap { source ->
-            val params = mutableListOf("id" to "$tmdbId", "type" to type, "source" to source)
-            if (season != null) params.add("season" to "$season")
-            if (episode != null) params.add("episode" to "$episode")
-            val qs = params.joinToString("&") { (k, v) -> "$k=$v" }
+        val json = runCatching { JSONObject(app.get(url, headers = headers).text) }.getOrNull() ?: return
+        val linkPaths = json.keys().asSequence()
+            .filter { it == "link" || it.startsWith("link") }
+            .mapNotNull { json.optString(it).takeIf { path -> path.isNotBlank() } }
+            .toList()
 
-            val response = runCatching { app.get("$base/api/vyla-stream?$qs").text }.getOrNull() ?: return@amap
-            val json = runCatching { JSONObject(response) }.getOrNull() ?: return@amap
-            if (!json.optBoolean("ok", false)) return@amap
-
-            val label = cinemaosSources[source] ?: source
-
-            json.optJSONArray("subtitles")?.let { subs ->
-                for (i in 0 until subs.length()) {
-                    val sub = subs.optJSONObject(i) ?: continue
-                    val subUrl = sub.optString("url").takeIf { it.isNotBlank() } ?: continue
-                    val lang = sub.optString("language").takeIf { it.isNotBlank() } ?: sub.optString("label", "Unknown")
-                    subtitleCallback(SubtitleFile(lang, subUrl))
-                }
-            }
-
-            val subStreams = json.optJSONArray("subStreams")
-            if (subStreams == null || subStreams.length() == 0) {
-                val url = json.optString("rawUrl").takeIf { it.isNotBlank() } ?: json.optString("url").takeIf { it.isNotBlank() } ?: return@amap
-                val headers = json.optJSONObject("headers")?.let { h -> h.keys().asSequence().associateWith { k -> h.optString(k) } } ?: emptyMap()
-                generateM3u8("CinemaOS-$source", url, "", headers = headers).forEach(callback)
-                return@amap
-            }
-
-            for (i in 0 until subStreams.length()) {
-                val stream = subStreams.optJSONObject(i) ?: continue
-                val streamUrl = stream.optString("rawUrl").takeIf { it.isNotBlank() }
-                    ?: stream.optString("url").takeIf { it.isNotBlank() } ?: continue
-                val streamHeaders = stream.optJSONObject("headers")?.let { h ->
-                    h.keys().asSequence().associateWith { k -> h.optString(k) }
-                } ?: emptyMap()
-                val name = stream.optString("name").takeIf { it.isNotBlank() }
-                val quality = getQualityFromName(stream.optString("quality", ""))
-
-                if (stream.optString("streamType") == "mp4") {
-                    callback(
-                        newExtractorLink("CinemaOS-$source", "CinemaOS [$label] ${name ?: ""}", streamUrl, ExtractorLinkType.VIDEO) {
-                            this.headers = streamHeaders
-                            this.quality = quality
-                        }
-                    )
-                } else {
-                    generateM3u8("CinemaOS-$source", streamUrl, "", headers = streamHeaders, quality = quality).forEach(callback)
-                }
-            }
+        linkPaths.amap { path ->
+            val resolved = runCatching { app.get("$frembedApi$path", headers = headers, allowRedirects = false) }.getOrNull() ?: return@amap
+            val target = resolved.headers["location"] ?: return@amap
+            loadExtractor(target, frembedApi, subtitleCallback, callback)
         }
     }
 }

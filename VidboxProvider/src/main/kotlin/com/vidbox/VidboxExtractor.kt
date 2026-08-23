@@ -363,7 +363,11 @@ object VidboxExtractor {
     }
 
     // -------------------------------------------------------------------------------------------
-    // French (frembed.casa) - pure link aggregator into Voe/Dood/Uqload, resolved via loadExtractor.
+    // French (frembed.casa) - redirect aggregator into Voe/Dood/Uqload/etc, resolved via
+    // loadExtractor. Response shape has drifted from a "links" array to flat "link"/"link1".."
+    // link7"(+"vostfr" audio variants) fields, each a path to /api/stream?...&server=<field>
+    // that 302s to the real embed host - confirmed live (uqload.vc/playmogo.com/vido.lol 302
+    // targets all match bundled loadExtractor hosts).
     // -------------------------------------------------------------------------------------------
     private const val frembedApi = "https://frembed.casa"
 
@@ -380,10 +384,12 @@ object VidboxExtractor {
         else "$frembedApi/api/series?id=$tmdbId&idType=tmdb&sa=$season&epi=$episode"
 
         val json = runCatching { JSONObject(app.get(url, headers = headers).text) }.getOrNull() ?: return
-        val links = json.optJSONArray("links") ?: return
+        val linkPaths = json.keys().asSequence()
+            .filter { it == "link" || it.startsWith("link") }
+            .mapNotNull { json.optString(it).takeIf { path -> path.isNotBlank() } }
+            .toList()
 
-        (0 until links.length()).toList().amap { i ->
-            val path = links.optJSONObject(i)?.optString("url")?.takeIf { it.isNotBlank() } ?: return@amap
+        linkPaths.amap { path ->
             val resolved = runCatching { app.get("$frembedApi$path", headers = headers, allowRedirects = false) }.getOrNull() ?: return@amap
             val target = resolved.headers["location"] ?: return@amap
             loadExtractor(target, frembedApi, subtitleCallback, callback)
