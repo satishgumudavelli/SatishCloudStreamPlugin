@@ -152,7 +152,7 @@ class CinemaOsProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val link = parseJson<VidLinkData>(data)
-        CinemaOsExtractor.invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
+        CinemaOsExtractor.invokeCinemaos(link.id, link.season, link.episode, subtitleCallback, callback)
         return true
     }
 

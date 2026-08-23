@@ -1,8 +1,10 @@
 {
   "domains": [
     { "name": "vidbox", "domain": "vidbox.vc" },
-    { "name": "cinemaos", "domain": "cinemaos.tech" },
     { "name": "cinemaos", "domain": "cinemaos.in" },
+    { "name": "cinemaos", "domain": "cinemaos.tech" },
+    { "name": "cinemaos", "domain": "cinemaos.me" },
+    { "name": "cinemaos", "domain": "cinemaos-v3.vercel.app" },
     { "name": "cinemaos", "domain": "cinemaos.live" }
   ]
 }

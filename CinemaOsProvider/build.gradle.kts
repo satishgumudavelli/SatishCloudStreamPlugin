@@ -14,7 +14,7 @@ cloudstream {
     * 2: Slow
     * 3: Beta-only
     **/
-    status = 3 // link resolution isn't confirmed working yet - see CinemaOsExtractor.kt
+    status = 1
 
     tvTypes = listOf(
         "Movie",
