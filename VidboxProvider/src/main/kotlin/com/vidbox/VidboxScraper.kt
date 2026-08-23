@@ -60,7 +60,7 @@ object VidboxScraper {
      * First reachable domain.json entry for vidbox, resolved once per process and cached.
      * Falls back to [vidboxMainUrl] if the domain list can't be fetched or nothing in it responds.
      */
-    private suspend fun resolveMainUrl(): String {
+    suspend fun resolveMainUrl(): String {
         resolvedMainUrl?.let { return it }
         val candidates = getDomainsByName(vidboxDomainName).ifEmpty { listOf(vidboxMainUrl.removePrefix("https://")) }
         val chosen = candidates.firstOrNull { isReachable(it) } ?: candidates.first()

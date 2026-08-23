@@ -46,17 +46,19 @@ class VidboxProvider : MainAPI() {
     override val mainPage = mainPageOf(*homeRows.toTypedArray())
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        mainUrl = VidboxScraper.resolveMainUrl()
         val result = VidboxScraper.discover(request.data, page)
         val shows = result.results.mapNotNull { it.toSearchResponse() }
         return newHomePageResponse(request.name, shows, hasNext = page < result.totalPages)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
+        mainUrl = VidboxScraper.resolveMainUrl()
         val q = java.net.URLEncoder.encode(query, "UTF-8")
         return VidboxScraper.discover("q=$q", 1).results.mapNotNull { it.toSearchResponse() }
     }
 
-    private fun JSONObject.toSearchResponse(): SearchResponse? {
+    private suspend fun JSONObject.toSearchResponse(): SearchResponse? {
         val mediaType = optString("media_type").ifEmpty { if (has("first_air_date")) "tv" else "movie" }
         val title = optString("title").ifEmpty { optString("name") }
         if (title.isEmpty()) {
@@ -69,14 +71,15 @@ class VidboxProvider : MainAPI() {
         val poster = optString("poster_path").takeIf { it.isNotBlank() }
             ?.let { "https://image.tmdb.org/t/p/w342$it" }
         val score = optDouble("vote_average", 0.0).let { if (it > 0) Score.from10(it.toString()) else null }
+        val base = VidboxScraper.resolveMainUrl()
 
         return if (mediaType == "tv") {
-            newTvSeriesSearchResponse(title, "$vidboxMainUrl/tv/$id", TvType.TvSeries) {
+            newTvSeriesSearchResponse(title, "$base/tv/$id", TvType.TvSeries) {
                 this.posterUrl = poster
                 this.score = score
             }
         } else {
-            newMovieSearchResponse(title, "$vidboxMainUrl/movie/$id", TvType.Movie) {
+            newMovieSearchResponse(title, "$base/movie/$id", TvType.Movie) {
                 this.posterUrl = poster
                 this.score = score
             }
