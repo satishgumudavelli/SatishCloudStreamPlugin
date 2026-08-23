@@ -159,6 +159,7 @@ class CinemaOsProvider : MainAPI() {
         runAllAsync(
             { CinemaOsExtractor.invokeCinemaos(link.id, link.imdbId, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
             { CinemaOsExtractor.invokeCinemaosV2Pro(link.id, link.season, link.episode, link.title, callback) },
+            { CinemaOsExtractor.invokeCinemaosWebview(link.id, link.season, link.episode, callback) },
         )
         return true
     }

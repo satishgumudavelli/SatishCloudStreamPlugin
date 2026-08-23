@@ -3,6 +3,7 @@ package com.cinemaos
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
@@ -137,6 +138,48 @@ object CinemaOsExtractor {
                 }
             }
         }
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // cinemaos.tech's /player/{tmdbId} page - a third, independent fallback that doesn't call
+    // providerv5/cinemaosv2pro's APIs at all. It renders the real embed page in an actual WebView
+    // and reads off whatever m3u8/mp4 request the page's own client JS fires, same mechanism the
+    // site's real UI uses. Unlike a plain curl/app.get, this only works because a WebView executes
+    // the page's JS - confirmed live by the user in a real browser.
+    suspend fun invokeCinemaosWebview(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val id = tmdbId ?: return
+        val base = CinemaOsScraper.resolveMainUrl()
+        val url = if (season == null) "$base/player/$id" else "$base/player/$id/$season/$episode"
+
+        val mediaRes = runCatching {
+            app.get(
+                url,
+                interceptor = WebViewResolver(
+                    Regex("""https?://[^"'\s]+?\.(?:m3u8|mp4)(?:\?[^"'\s]*)?"""),
+                    useOkhttp = false,
+                    timeout = 20_000L,
+                )
+            )
+        }.getOrNull() ?: return
+
+        val mediaUrl = mediaRes.url
+        val type = when {
+            mediaUrl.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
+            mediaUrl.contains(".mp4", ignoreCase = true) -> ExtractorLinkType.VIDEO
+            else -> return
+        }
+
+        callback(
+            newExtractorLink("CinemaOS-WebView", "CinemaOS [WebView]", mediaUrl, type) {
+                this.referer = "$base/"
+                this.headers = mapOf("Referer" to "$base/", "Origin" to base)
+            }
+        )
     }
 
     // -------------------------------------------------------------------------------------------
