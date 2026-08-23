@@ -1,5 +1,26 @@
 [
     {
+        "iconUrl": "https://cinemaos.tech/favicon.ico",
+        "fileHash": "sha256-7120e70980e43d0297396ecbbbfcf921316f7e6248f26fdfd7aa0550a1e3ae7e",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 35261,
+        "status": 3,
+        "language": "en",
+        "authors": [
+            "Satish Gumudavelli"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "CinemaOsProvider",
+        "description": "CinemaOS - Movies & TV Shows streaming guide",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/CinemaOsProvider.cs3",
+        "name": "CinemaOsProvider"
+    },
+    {
         "iconUrl": "https://vidbox.vc/logo.png",
         "fileHash": "sha256-2c8ea57ea70e2097cf48b5f792e7e7ebfb97ba20a9e78516db02fcb319e8d03a",
         "apiVersion": 1,
