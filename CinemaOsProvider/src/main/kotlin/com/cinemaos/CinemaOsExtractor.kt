@@ -78,7 +78,15 @@ object CinemaOsExtractor {
             if (subStreams == null || subStreams.length() == 0) {
                 val url = json.optString("rawUrl").takeIf { it.isNotBlank() } ?: json.optString("url").takeIf { it.isNotBlank() } ?: return@amap
                 val headers = json.optJSONObject("headers")?.let { h -> h.keys().asSequence().associateWith { k -> h.optString(k) } } ?: emptyMap()
-                generateM3u8("CinemaOS-$source", url, "", headers = headers).forEach(callback)
+                if (url.contains(".m3u8", ignoreCase = true)) {
+                    generateM3u8("CinemaOS-$source", url, "", headers = headers).forEach(callback)
+                } else {
+                    callback(
+                        newExtractorLink("CinemaOS-$source", "CinemaOS [$label]", url, ExtractorLinkType.VIDEO) {
+                            this.headers = headers
+                        }
+                    )
+                }
                 return@amap
             }
 
@@ -92,15 +100,19 @@ object CinemaOsExtractor {
                 val name = stream.optString("name").takeIf { it.isNotBlank() }
                 val quality = getQualityFromName(stream.optString("quality", ""))
 
-                if (stream.optString("streamType") == "mp4") {
+                // "streamType" isn't reliable - vdn returns "unknown" for what's actually a plain
+                // video file (confirmed: content-type application/octet-stream, not a manifest),
+                // and generateM3u8 silently returns zero links for a non-m3u8 URL. Only route
+                // through the m3u8 parser when the URL itself looks like a real manifest.
+                if (streamUrl.contains(".m3u8", ignoreCase = true) || stream.optString("streamType") == "hls") {
+                    generateM3u8("CinemaOS-$source", streamUrl, "", headers = streamHeaders, quality = quality).forEach(callback)
+                } else {
                     callback(
                         newExtractorLink("CinemaOS-$source", "CinemaOS [$label] ${name ?: ""}", streamUrl, ExtractorLinkType.VIDEO) {
                             this.headers = streamHeaders
                             this.quality = quality
                         }
                     )
-                } else {
-                    generateM3u8("CinemaOS-$source", streamUrl, "", headers = streamHeaders, quality = quality).forEach(callback)
                 }
             }
         }
