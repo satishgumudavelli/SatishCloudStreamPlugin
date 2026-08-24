@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://cinemaos.tech/favicon.ico",
-        "fileHash": "sha256-7f19b0881bd2d75e35b77b2edd54f220b3d284676441a31ea9149ed8c265063d",
+        "fileHash": "sha256-fc33a7ff22082ab9313a29e407b237673ae800b86cb0c65bdef93d250b78c50b",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 48060,
+        "fileSize": 47981,
         "status": 1,
         "language": "en",
         "authors": [
@@ -22,10 +22,10 @@
     },
     {
         "iconUrl": "https://vidbox.vc/logo.png",
-        "fileHash": "sha256-1662d44275b6fc3311ce778d4d6947251e9775f21e8cfafaef68685e492da33a",
+        "fileHash": "sha256-7106facd58c87b72c3dc986e205b3d7f7bf47352e30c7a3813b5b04f37ea5b16",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 82822,
+        "fileSize": 84252,
         "status": 1,
         "language": "en",
         "authors": [
