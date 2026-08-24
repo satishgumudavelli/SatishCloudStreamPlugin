@@ -53,7 +53,7 @@ object VidboxExtractor {
             val displayName = "Vidrock [$key] $lang"
 
             if (finalUrl.contains(".m3u8", ignoreCase = true)) {
-                generateM3u8("Vidrock-$key", finalUrl, "", headers = headers).forEach(callback)
+                generateM3u8("Vidrock-$key", finalUrl, "", headers = headers, name = displayName).forEach(callback)
             } else {
                 callback(
                     newExtractorLink("Vidrock-$key", displayName, finalUrl, ExtractorLinkType.VIDEO) {
@@ -150,7 +150,13 @@ object VidboxExtractor {
 
     private fun nxshaDecode(hash: String): JSONObject = JSONObject(CryptoJsAes.decryptUrlSafe(hash, nxshaPassphrase))
 
-    suspend fun invokeNxsha(tmdbId: Int?, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) {
+    suspend fun invokeNxsha(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
         if (tmdbId == null) return
         val type = if (season == null) "movie" else "tv"
         val baseObjStr = JSONObject().apply {
@@ -165,6 +171,18 @@ object VidboxExtractor {
         val serversHash = runCatching { JSONObject(serversResp).optString("_hash") }.getOrNull()?.takeIf { it.isNotBlank() } ?: return
         val servers = runCatching { nxshaDecode(serversHash).optJSONArray("servers") }.getOrNull() ?: return
         val headers = mapOf("Referer" to "$nxshaApi/")
+
+        runCatching {
+            val subsResp = app.get("$nxshaApi/api/subtitles?q=${nxshaEncode(JSONObject(baseObjStr))}").text
+            val subsHash = JSONObject(subsResp).optString("_hash").takeIf { it.isNotBlank() }!!
+            val subs = nxshaDecode(subsHash).optJSONArray("subtitles")!!
+            for (i in 0 until subs.length()) {
+                val sub = subs.optJSONObject(i) ?: continue
+                val subUrl = sub.optString("uri").takeIf { it.isNotBlank() } ?: continue
+                val lang = sub.optString("title").takeIf { it.isNotBlank() } ?: sub.optString("language", "Unknown")
+                subtitleCallback(SubtitleFile(lang, subUrl))
+            }
+        }
 
         (0 until servers.length()).toList().amap { i ->
             val scraper = servers.optJSONObject(i)?.optString("scraper")?.takeIf { it.isNotBlank() } ?: return@amap
@@ -247,9 +265,11 @@ object VidboxExtractor {
                 val src = sources.optJSONObject(i) ?: continue
                 val srcUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
                 // "quality" is a free-form label ("1080p", "Vimeos", "Hindi", ...) - getQualityFromName
-                // parses the resolution ones and falls back to Unknown for anything else.
-                val quality = getQualityFromName(src.optString("quality"))
-                generateM3u8("Videasy-$provider", srcUrl, "", quality = quality).forEach(callback)
+                // parses the resolution ones and falls back to Unknown for anything else, so the raw
+                // label is kept in the name too or a dub language like "Hindi" would be lost entirely.
+                val rawLabel = src.optString("quality")
+                val quality = getQualityFromName(rawLabel)
+                generateM3u8("Videasy-$provider", srcUrl, "", quality = quality, name = "Videasy [$provider] $rawLabel").forEach(callback)
             }
         }
     }
@@ -356,7 +376,14 @@ object VidboxExtractor {
                         }
                     )
                 } else {
-                    generateM3u8("Peachify-$server", finalUrl, "", headers = srcHeaders).forEach(callback)
+                    generateM3u8(
+                        "Peachify-$server",
+                        finalUrl,
+                        "",
+                        quality = quality.takeIf { it > 0 },
+                        headers = srcHeaders,
+                        name = "Peachify [$server] $dub",
+                    ).forEach(callback)
                 }
             }
         }
@@ -463,7 +490,14 @@ object VidboxExtractor {
                 }
             )
         } else {
-            generateM3u8("Vidnest-$provider", streamUrl, "", headers = refHeaders).forEach(callback)
+            generateM3u8(
+                "Vidnest-$provider",
+                streamUrl,
+                "",
+                quality = quality.takeIf { it > 0 },
+                headers = refHeaders,
+                name = "Vidnest [$provider] $lang",
+            ).forEach(callback)
         }
     }
 

@@ -172,7 +172,7 @@ class VidboxProvider : MainAPI() {
             { invoke2Embed(link.id, link.season, link.episode, callback) },
             { invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
             { invokeBravo(link.id, link.season, link.episode, callback) },
-            { invokeNxsha(link.id, link.season, link.episode, callback) },
+            { invokeNxsha(link.id, link.season, link.episode, subtitleCallback, callback) },
         )
         return true
     }

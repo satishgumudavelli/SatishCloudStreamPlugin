@@ -115,7 +115,7 @@ object CinemaOsExtractor {
                     if (!seenUrls.add(srcUrl)) return
                     val name = "CinemaOS [$label]" + if (qualityTag.isNotBlank()) " $qualityTag" else ""
                     if (type == "hls" || srcUrl.contains(".m3u8", ignoreCase = true)) {
-                        generateM3u8("CinemaOS-$serverName$qualityTag", srcUrl, "", headers = headers).forEach(callback)
+                        generateM3u8("CinemaOS-$serverName$qualityTag", srcUrl, "", headers = headers, name = name).forEach(callback)
                     } else {
                         callback(
                             newExtractorLink("CinemaOS-$serverName$qualityTag", name, srcUrl, ExtractorLinkType.VIDEO) {
@@ -240,7 +240,7 @@ object CinemaOsExtractor {
 
             when {
                 srcUrl.contains(".m3u8", ignoreCase = true) ->
-                    generateM3u8("CinemaOS-v2pro-$i", srcUrl, "", headers = headers).forEach(callback)
+                    generateM3u8("CinemaOS-v2pro-$i", srcUrl, "", headers = headers, name = name).forEach(callback)
                 srcUrl.contains(".mpd", ignoreCase = true) ->
                     callback(newExtractorLink("CinemaOS-v2pro-$i", name, srcUrl, ExtractorLinkType.DASH) { this.headers = headers })
                 else ->
