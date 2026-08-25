@@ -1,0 +1,39 @@
+CinemaOsProvider/src/main/kotlin/com/cinemaos/CinemaOsExtractor.kt
+  s_56025504f5ef53::t_1fbf8e9c3493b3 52
+  s_56025504f5ef53::t_19665c398da78c 255
+  s_56025504f5ef53::t_ad38a4f98d0739 50-51,53-61
+  s_56025504f5ef53::t_aa009a53150e2c 9
+  s_56025504f5ef53::t_adb419beba0476 130
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxExtractor.kt
+  s_56025504f5ef53::t_5708b9ab5b5cbd 230
+  s_56025504f5ef53::t_0d1dc1edd71b3f 670
+  s_56025504f5ef53::t_83f4c1d209d222 491
+  s_56025504f5ef53::t_7b1b8674cc9838 569
+  s_56025504f5ef53::t_13521235eda025 289
+  s_56025504f5ef53::t_22225875aaa547 396-404
+  s_56025504f5ef53::t_1d5d681f951c1e 73
+  s_56025504f5ef53::t_3efa61bd238b3a 511-519
+  s_56025504f5ef53::t_c071af86e32edb 32
+  s_56025504f5ef53::t_255632c99f647b 586
+  s_56025504f5ef53::t_9025e9edd87b37 659
+  s_56025504f5ef53::t_771e731259bf6e 693
+  s_56025504f5ef53::t_d263a8d4829a3b 139
+  s_56025504f5ef53::t_f03e70eeeb1594 324
+  s_56025504f5ef53::t_415ed3f1960f9f 27-31,33-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "0afd63466d7001d6d064ab55bcf7336979433ac3",
+  "prompts": {},
+  "sessions": {
+    "s_56025504f5ef53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2729e2-7cfd-48d5-a1da-46aadf56c24c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
