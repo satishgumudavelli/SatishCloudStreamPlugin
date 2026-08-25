@@ -9,7 +9,6 @@ import com.lagradost.cloudstream3.amap
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.getQualityFromName
@@ -24,6 +23,24 @@ const val vidrock = "https://vidrock.net"
 const val vidlink = "https://vidlink.pro"
 
 object VidboxExtractor {
+
+    // Emits the raw m3u8 URL directly instead of running it through generateM3u8's quality-splitter.
+    // Splitting a master into per-resolution sub-playlists drops any #EXT-X-MEDIA alternate audio
+    // groups declared only in the master (confirmed on a real Nxsha capture: Hindi/Korean dubs) -
+    // the split links silently lose audio-track selection. The unmodified master lets the player's
+    // own HLS engine parse it and expose whatever audio tracks/qualities it declares.
+    private suspend fun directM3u8Link(
+        source: String,
+        streamUrl: String,
+        referer: String = "",
+        headers: Map<String, String> = emptyMap(),
+        quality: Int? = null,
+        name: String = source,
+    ): ExtractorLink = newExtractorLink(source, name, streamUrl, ExtractorLinkType.M3U8) {
+        this.referer = referer
+        this.headers = headers
+        this.quality = quality ?: Qualities.Unknown.value
+    }
 
     // -------------------------------------------------------------------------------------------
     // Rock (vidrock.net) - id goes in the URL as plain text; each returned stream URL is its own
@@ -53,7 +70,7 @@ object VidboxExtractor {
             val displayName = "Vidrock [$key] $lang"
 
             if (finalUrl.contains(".m3u8", ignoreCase = true)) {
-                generateM3u8("Vidrock-$key", finalUrl, "", headers = headers, name = displayName).forEach(callback)
+                callback(directM3u8Link("Vidrock-$key", finalUrl, headers = headers, name = displayName))
             } else {
                 callback(
                     newExtractorLink("Vidrock-$key", displayName, finalUrl, ExtractorLinkType.VIDEO) {
@@ -119,7 +136,7 @@ object VidboxExtractor {
             }
 
             val m3u8Url = playlist.substringBefore("?")
-            generateM3u8("Vidlink", m3u8Url, referer, headers = headers).forEach(callback)
+            callback(directM3u8Link("Vidlink", m3u8Url, referer = referer, headers = headers))
             return
         }
 
@@ -210,16 +227,7 @@ object VidboxExtractor {
                         }
                     )
                 } else {
-                    // Emitting the raw master manifest directly rather than through generateM3u8's
-                    // quality-splitter: some of these masters declare #EXT-X-MEDIA alternate audio
-                    // groups (e.g. Hindi/Korean dubs) - splitting into per-resolution sub-playlists
-                    // drops that grouping, silently losing audio-track selection for the split links.
-                    // The unmodified master lets the player's own HLS engine expose the audio picker.
-                    callback(
-                        newExtractorLink("Nxsha-$scraper$suffix", "Nxsha [$scraper] $label", url, ExtractorLinkType.M3U8) {
-                            this.headers = headers
-                        }
-                    )
+                    callback(directM3u8Link("Nxsha-$scraper$suffix", url, headers = headers, name = "Nxsha [$scraper] $label"))
                 }
             }
         }
@@ -278,7 +286,7 @@ object VidboxExtractor {
                 // label is kept in the name too or a dub language like "Hindi" would be lost entirely.
                 val rawLabel = src.optString("quality")
                 val quality = getQualityFromName(rawLabel)
-                generateM3u8("Videasy-$provider", srcUrl, "", quality = quality, name = "Videasy [$provider] $rawLabel").forEach(callback)
+                callback(directM3u8Link("Videasy-$provider", srcUrl, quality = quality, name = "Videasy [$provider] $rawLabel"))
             }
         }
     }
@@ -313,7 +321,7 @@ object VidboxExtractor {
         }
 
         val streamUrl = json.optJSONObject("source")?.optString("url")?.takeIf { it.isNotBlank() } ?: return
-        generateM3u8("111Movies", streamUrl, "", headers = headers).forEach(callback)
+        callback(directM3u8Link("111Movies", streamUrl, headers = headers))
     }
 
     // -------------------------------------------------------------------------------------------
@@ -385,14 +393,15 @@ object VidboxExtractor {
                         }
                     )
                 } else {
-                    generateM3u8(
-                        "Peachify-$server",
-                        finalUrl,
-                        "",
-                        quality = quality.takeIf { it > 0 },
-                        headers = srcHeaders,
-                        name = "Peachify [$server] $dub",
-                    ).forEach(callback)
+                    callback(
+                        directM3u8Link(
+                            "Peachify-$server",
+                            finalUrl,
+                            quality = quality.takeIf { it > 0 },
+                            headers = srcHeaders,
+                            name = "Peachify [$server] $dub",
+                        )
+                    )
                 }
             }
         }
@@ -479,7 +488,7 @@ object VidboxExtractor {
             ?: emptyMap()
 
             urls.forEach { streamUrl ->
-                generateM3u8("Vidnest-$provider", streamUrl, "", headers = refHeaders).forEach(callback)
+                callback(directM3u8Link("Vidnest-$provider", streamUrl, headers = refHeaders))
             }
         }
     }
@@ -499,14 +508,15 @@ object VidboxExtractor {
                 }
             )
         } else {
-            generateM3u8(
-                "Vidnest-$provider",
-                streamUrl,
-                "",
-                quality = quality.takeIf { it > 0 },
-                headers = refHeaders,
-                name = "Vidnest [$provider] $lang",
-            ).forEach(callback)
+            callback(
+                directM3u8Link(
+                    "Vidnest-$provider",
+                    streamUrl,
+                    quality = quality.takeIf { it > 0 },
+                    headers = refHeaders,
+                    name = "Vidnest [$provider] $lang",
+                )
+            )
         }
     }
 
@@ -556,7 +566,7 @@ object VidboxExtractor {
                 val sources = playlist.optJSONObject(p)?.optJSONArray("sources") ?: continue
                 for (s in 0 until sources.length()) {
                     val file = sources.optJSONObject(s)?.optString("file")?.takeIf { it.isNotBlank() } ?: continue
-                    generateM3u8("Xpass-$name", file, "", headers = headers).forEach(callback)
+                    callback(directM3u8Link("Xpass-$name", file, headers = headers))
                 }
             }
         }
@@ -573,7 +583,7 @@ object VidboxExtractor {
         val headers = mapOf("Referer" to "http://king.2embed.stream/")
 
         Regex("""file\s*:\s*"([^"]+)"""").findAll(html).map { it.groupValues[1] }.forEach { file ->
-            generateM3u8("2Embed", file, "", headers = headers).forEach(callback)
+            callback(directM3u8Link("2Embed", file, headers = headers))
         }
     }
 
@@ -646,7 +656,7 @@ object VidboxExtractor {
                 val entry = sourcesObj.opt(key)
                 val srcUrl = (entry as? JSONObject)?.optString("url")?.takeIf { it.isNotBlank() }
                     ?: (entry as? String)?.takeIf { it.isNotBlank() }
-                if (srcUrl != null) generateM3u8("Cinemaos-$key", srcUrl, "", headers = headers).forEach(callback)
+                if (srcUrl != null) callback(directM3u8Link("Cinemaos-$key", srcUrl, headers = headers))
             }
             if (sourcesObj.length() > 0) return
         }
@@ -657,7 +667,7 @@ object VidboxExtractor {
             ?: resolved.optJSONArray("sources")?.optJSONObject(0)?.optString("url")?.takeIf { it.isNotBlank() }
             ?: return
 
-        generateM3u8("Cinemaos", streamUrl, "", headers = headers).forEach(callback)
+        callback(directM3u8Link("Cinemaos", streamUrl, headers = headers))
     }
 
     // -------------------------------------------------------------------------------------------
@@ -680,6 +690,6 @@ object VidboxExtractor {
         val unpacked = runCatching { getAndUnpack(scriptData) }.getOrNull() ?: scriptData
         val m3u8 = Regex("""sources:\[\{file:"(.*?)"""").find(unpacked)?.groupValues?.get(1) ?: return
 
-        generateM3u8("Bravo", m3u8, iframeSrc, headers = mapOf("Referer" to iframeSrc)).forEach(callback)
+        callback(directM3u8Link("Bravo", m3u8, referer = iframeSrc, headers = mapOf("Referer" to iframeSrc)))
     }
 }

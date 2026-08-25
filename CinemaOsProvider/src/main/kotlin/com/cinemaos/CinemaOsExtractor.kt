@@ -6,7 +6,7 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
+import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -46,6 +46,18 @@ private val cinemaosScrapers = listOf(
 )
 
 object CinemaOsExtractor {
+
+    // Emits the raw m3u8 URL directly instead of running it through generateM3u8's quality-splitter,
+    // which drops any #EXT-X-MEDIA alternate audio groups declared only in the master manifest.
+    private suspend fun directM3u8Link(
+        source: String,
+        streamUrl: String,
+        headers: Map<String, String> = emptyMap(),
+        name: String = source,
+    ): ExtractorLink = newExtractorLink(source, name, streamUrl, ExtractorLinkType.M3U8) {
+        this.headers = headers
+        this.quality = Qualities.Unknown.value
+    }
 
     private fun cinemaosSecret(tmdbId: Int, imdbId: String, season: Int?, episode: Int?): String {
         val parts = mutableListOf("tmdbId:$tmdbId", "imdbId:$imdbId")
@@ -115,7 +127,7 @@ object CinemaOsExtractor {
                     if (!seenUrls.add(srcUrl)) return
                     val name = "CinemaOS [$label]" + if (qualityTag.isNotBlank()) " $qualityTag" else ""
                     if (type == "hls" || srcUrl.contains(".m3u8", ignoreCase = true)) {
-                        generateM3u8("CinemaOS-$serverName$qualityTag", srcUrl, "", headers = headers, name = name).forEach(callback)
+                        callback(directM3u8Link("CinemaOS-$serverName$qualityTag", srcUrl, headers = headers, name = name))
                     } else {
                         callback(
                             newExtractorLink("CinemaOS-$serverName$qualityTag", name, srcUrl, ExtractorLinkType.VIDEO) {
@@ -240,7 +252,7 @@ object CinemaOsExtractor {
 
             when {
                 srcUrl.contains(".m3u8", ignoreCase = true) ->
-                    generateM3u8("CinemaOS-v2pro-$i", srcUrl, "", headers = headers, name = name).forEach(callback)
+                    callback(directM3u8Link("CinemaOS-v2pro-$i", srcUrl, headers = headers, name = name))
                 srcUrl.contains(".mpd", ignoreCase = true) ->
                     callback(newExtractorLink("CinemaOS-v2pro-$i", name, srcUrl, ExtractorLinkType.DASH) { this.headers = headers })
                 else ->
