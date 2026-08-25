@@ -210,7 +210,16 @@ object VidboxExtractor {
                         }
                     )
                 } else {
-                    generateM3u8("Nxsha-$scraper$suffix", url, "", headers = headers).forEach(callback)
+                    // Emitting the raw master manifest directly rather than through generateM3u8's
+                    // quality-splitter: some of these masters declare #EXT-X-MEDIA alternate audio
+                    // groups (e.g. Hindi/Korean dubs) - splitting into per-resolution sub-playlists
+                    // drops that grouping, silently losing audio-track selection for the split links.
+                    // The unmodified master lets the player's own HLS engine expose the audio picker.
+                    callback(
+                        newExtractorLink("Nxsha-$scraper$suffix", "Nxsha [$scraper] $label", url, ExtractorLinkType.M3U8) {
+                            this.headers = headers
+                        }
+                    )
                 }
             }
         }
