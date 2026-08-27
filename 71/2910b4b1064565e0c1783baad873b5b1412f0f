@@ -1,0 +1,36 @@
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxExtractor.kt
+  s_f709da3437f119::t_416b74d5b0ab24 673,770-821
+  s_f709da3437f119::t_01c438ba1039a9 730-769
+  s_f709da3437f119::t_9eb032b433a249 697
+  s_f709da3437f119::t_d418cb4a9f7780 674-696,698-729
+build.gradle.kts
+  s_f709da3437f119::t_f63bedd8563aff 49
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxProvider.kt
+  s_f709da3437f119::t_6af33fc9cdcc50 181
+  s_f709da3437f119::t_3e61c140f03c43 179
+  s_f709da3437f119::t_85c82fe5c2b780 32
+  s_f709da3437f119::t_1af4298a72f563 31
+  s_f709da3437f119::t_1c4bd317d7c292 27
+  s_f709da3437f119::t_425867901eb843 180
+VidboxProvider/build.gradle.kts
+  s_f709da3437f119::t_8ab9dc4e0c8013 27-33
+VidboxProvider/src/main/kotlin/com/vidbox/VidboxCrypto.kt
+  s_f709da3437f119::t_d0599770b0a6d3 6-7
+  s_f709da3437f119::t_b014c92def56bf 184-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "712910b4b1064565e0c1783baad873b5b1412f0f",
+  "prompts": {},
+  "sessions": {
+    "s_f709da3437f119": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "876be2bd-1641-4c19-b038-7451a28b0416",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
