@@ -25,11 +25,14 @@ import com.vidbox.VidboxExtractor.invokeBravo
 import com.vidbox.VidboxExtractor.invokeCinemaos
 import com.vidbox.VidboxExtractor.invokeFrembed
 import com.vidbox.VidboxExtractor.invokeMax
+import com.vidbox.VidboxExtractor.invokeMovieNight
+import com.vidbox.VidboxExtractor.invokeMovy
 import com.vidbox.VidboxExtractor.invokeMplay
 import com.vidbox.VidboxExtractor.invokeNxsha
 import com.vidbox.VidboxExtractor.invokePeachify
 import com.vidbox.VidboxExtractor.invokeRive
 import com.vidbox.VidboxExtractor.invokeTongo
+import com.vidbox.VidboxExtractor.invokeVuflix
 import com.vidbox.VidboxExtractor.invokeVideasy
 import com.vidbox.VidboxExtractor.invokeVidlink
 import com.vidbox.VidboxExtractor.invokeVidnest
@@ -179,6 +182,9 @@ class VidboxProvider : MainAPI() {
             { invokeMax(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeTongo(link.id, link.season, link.episode, callback) },
             { invokeRive(link.id, link.season, link.episode, subtitleCallback, callback) },
+            { invokeMovy(link.id, link.season, link.episode, link.title, link.year, callback) },
+            { invokeMovieNight(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { invokeVuflix(link.id, link.season, link.episode, callback) },
         )
         return true
     }

@@ -24,6 +24,9 @@ const val vidlink = "https://vidlink.pro"
 
 object VidboxExtractor {
 
+    private const val browserUa =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
     // Emits the raw m3u8 URL directly instead of running it through generateM3u8's quality-splitter.
     // Splitting a master into per-resolution sub-playlists drops any #EXT-X-MEDIA alternate audio
     // groups declared only in the master (confirmed on a real Nxsha capture: Hindi/Korean dubs) -
@@ -287,6 +290,244 @@ object VidboxExtractor {
                 val rawLabel = src.optString("quality")
                 val quality = getQualityFromName(rawLabel)
                 callback(directM3u8Link("Videasy-$provider", srcUrl, quality = quality, name = "Videasy [$provider] $rawLabel"))
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Movy (movy.bz) - same speedracelight/mvm1-family backend as Videasy/Vidking above (identical
+    // MvmCipher, just a different domain and server list). 14 city servers, several dubbed.
+    // -------------------------------------------------------------------------------------------
+    private const val movyApi = "https://api.wecollege.net"
+    private val movyHeaders = mapOf(
+        "User-Agent" to browserUa,
+        "Referer" to "https://www.movy.bz/",
+        "Origin" to "https://www.movy.bz",
+    )
+    private val movyServers = listOf(
+        "miami" to null, "seattle" to null, "denver" to null, "chicago" to null, "dallas" to null,
+        "atlanta" to null, "houston" to null, "austin" to null, "boston" to null,
+        "munich" to "language=german", "berlin" to null, "paris" to null, "delhi" to null, "cancun" to null,
+    )
+
+    suspend fun invokeMovy(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        title: String?,
+        year: Int?,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        if (tmdbId == null || title.isNullOrBlank()) return
+        val mediaType = if (season == null) "movie" else "tv"
+
+        val seedResp = runCatching { app.get("$movyApi/seed?mediaId=$tmdbId", headers = movyHeaders).text }.getOrNull() ?: return
+        val seed = runCatching { JSONObject(seedResp).optString("seed") }.getOrNull()?.takeIf { it.isNotBlank() } ?: return
+
+        movyServers.amap { (server, extra) ->
+            val params = mutableListOf(
+                "title" to title, "mediaType" to mediaType, "tmdbId" to "$tmdbId",
+                "year" to (year?.toString() ?: ""), "enc" to "2", "seed" to seed
+            )
+            if (season != null) params.add("seasonId" to "$season")
+            if (episode != null) params.add("episodeId" to "$episode")
+            var qs = params.joinToString("&") { (k, v) -> "$k=${URLEncoder.encode(v, "UTF-8")}" }
+            if (extra != null) qs += "&$extra"
+
+            val body = runCatching { app.get("$movyApi/$server/sources?$qs", headers = movyHeaders).text }.getOrNull() ?: return@amap
+            val decoded = runCatching { MvmCipher.decode(body, seed, tmdbId) }.getOrNull() ?: return@amap
+            val json = runCatching { JSONObject(decoded) }.getOrNull() ?: return@amap
+
+            val sources = json.optJSONArray("sources") ?: return@amap
+            for (i in 0 until sources.length()) {
+                val src = sources.optJSONObject(i) ?: continue
+                val srcUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val rawLabel = src.optString("quality")
+                callback(directM3u8Link("Movy-$server", srcUrl, headers = movyHeaders, quality = getQualityFromName(rawLabel), name = "Movy [$server] $rawLabel"))
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // MovieNight (movienig.ht) - one text/event-stream response per server; read as plain text and
+    // pull the "event: done" / "data: {...}" line out rather than doing real SSE parsing.
+    // -------------------------------------------------------------------------------------------
+    private const val movieNightApi = "https://movienig.ht"
+    private val movieNightHeaders = mapOf(
+        "User-Agent" to browserUa,
+        "Referer" to "$movieNightApi/",
+        "Origin" to movieNightApi,
+        "Accept" to "text/event-stream",
+    )
+    private val movieNightServers = listOf(
+        "dallas" to "Dallas 4K", "austin" to "Austin", "helena" to "Helena", "seattle" to "Seattle 4K",
+        "vixsrc-1" to "Newport Beach", "tucson" to "Tucson", "salem" to "Salem"
+    )
+
+    suspend fun invokeMovieNight(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        title: String?,
+        year: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        if (tmdbId == null || title.isNullOrBlank()) return
+        val encTitle = URLEncoder.encode(title, "UTF-8")
+        val yearQuery = if (year != null) "&year=$year" else ""
+
+        movieNightServers.amap { (serverId, label) ->
+            val path = if (season != null) "tv/$tmdbId/${season}/${episode ?: 1}" else "movie/$tmdbId"
+            val url = "$movieNightApi/api/stream/v1/$path?title=$encTitle$yearQuery&server=$serverId&only=1"
+            val body = runCatching { app.get(url, headers = movieNightHeaders).text }.getOrNull() ?: return@amap
+
+            val doneIdx = body.indexOf("event: done")
+            if (doneIdx == -1) return@amap
+            val dataIdx = body.indexOf("data: ", doneIdx)
+            if (dataIdx == -1) return@amap
+            val jsonStart = dataIdx + "data: ".length
+            val jsonEnd = body.indexOf('\n', jsonStart).let { if (it == -1) body.length else it }
+            val json = runCatching { JSONObject(body.substring(jsonStart, jsonEnd).trim()) }.getOrNull() ?: return@amap
+
+            json.optJSONArray("subtitles")?.let { subs ->
+                for (i in 0 until subs.length()) {
+                    val sub = subs.optJSONObject(i) ?: continue
+                    val subUrl = sub.optString("url").takeIf { it.isNotBlank() } ?: continue
+                    val lang = sub.optString("label").takeIf { it.isNotBlank() } ?: sub.optString("language", "Unknown")
+                    subtitleCallback(SubtitleFile(lang, subUrl))
+                }
+            }
+
+            val sources = json.optJSONArray("sources") ?: return@amap
+            for (i in 0 until sources.length()) {
+                val src = sources.optJSONObject(i) ?: continue
+                val srcUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val quality = src.optString("quality", "Auto")
+                val name = "MovieNight $label ($quality)"
+                if (src.optString("type", "hls") == "hls") {
+                    callback(directM3u8Link("MovieNight-$serverId", srcUrl, headers = movieNightHeaders, quality = getQualityFromName(quality), name = name))
+                } else {
+                    callback(
+                        newExtractorLink("MovieNight-$serverId", name, srcUrl, ExtractorLinkType.VIDEO) {
+                            this.headers = movieNightHeaders
+                            this.quality = getQualityFromName(quality)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Vuflix (vuflix.co) - dynamic provider discovery + per-provider source fan-out. A source's URL
+    // may be a "v-relay"/"a-relay" token (base64url JSON: {u: directUrl, h: headers}) instead of a
+    // direct URL - unwrap it to get the real stream and the exact headers that host requires.
+    // -------------------------------------------------------------------------------------------
+    private const val vuflixApi = "https://vuflix.co"
+    private val vuflixHeaders = mapOf(
+        "User-Agent" to browserUa,
+        "Referer" to "$vuflixApi/",
+        "Origin" to vuflixApi,
+        "Accept" to "application/json, text/plain, */*",
+    )
+    private val vuflixFallbackProviders = listOf(
+        "vsembed", "moonflix", "megasource", "hdghar", "moviebox", "cineplay", "huhu",
+        "bingr", "onlyflix", "vaplayer", "flixhqz", "castle", "cinejoy", "filesun", "yoru"
+    )
+
+    private fun unwrapVuflixUrl(rawUrl: String): Pair<String, Map<String, String>> {
+        if (!rawUrl.contains("v-relay?t=") && !rawUrl.contains("a-relay?t=")) return rawUrl to vuflixHeaders
+        return runCatching {
+            val t = rawUrl.substringAfter("t=").substringBefore("&")
+            val decoded = String(base64UrlDecode(t), Charsets.UTF_8)
+            val obj = JSONObject(decoded)
+            val directUrl = obj.optString("u").takeIf { it.isNotBlank() } ?: return@runCatching null
+            val headers = vuflixHeaders.toMutableMap()
+            obj.optJSONObject("h")?.let { h ->
+                val keys = h.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    headers[k] = h.optString(k)
+                }
+            }
+            directUrl to (headers as Map<String, String>)
+        }.getOrNull() ?: (rawUrl to vuflixHeaders)
+    }
+
+    private suspend fun getVuflixProviders(): List<String> {
+        val resp = runCatching { app.get("$vuflixApi/api/player/providers", headers = vuflixHeaders).text }.getOrNull()
+            ?: return vuflixFallbackProviders
+        val json = runCatching { JSONObject(resp) }.getOrNull() ?: return vuflixFallbackProviders
+        if (!json.optBoolean("ok")) return vuflixFallbackProviders
+        val arr = json.optJSONArray("providers") ?: return vuflixFallbackProviders
+        val ids = (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.optString("id")?.takeIf { it.isNotBlank() } }
+        return ids.ifEmpty { vuflixFallbackProviders }
+    }
+
+    suspend fun invokeVuflix(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        if (tmdbId == null) return
+        val mediaType = if (season == null) "movie" else "tv"
+        val seasonEpisode = if (season != null) "&season=$season&episode=${episode ?: 1}" else ""
+
+        getVuflixProviders().amap { provider ->
+            val url = "$vuflixApi/api/player/sources?type=$mediaType&tmdbId=$tmdbId$seasonEpisode&provider=$provider"
+            val body = runCatching { app.get(url, headers = vuflixHeaders).text }.getOrNull() ?: return@amap
+            val json = runCatching { JSONObject(body) }.getOrNull() ?: return@amap
+            if (!json.optBoolean("ok")) return@amap
+            val sources = json.optJSONArray("sources") ?: return@amap
+
+            for (i in 0 until sources.length()) {
+                val item = sources.optJSONObject(i) ?: continue
+                val providerName = item.optString("providerName").takeIf { it.isNotBlank() }
+                    ?: item.optString("publicLabel").takeIf { it.isNotBlank() } ?: provider
+
+                suspend fun emit(rawUrl: String, quality: String, extra: String) {
+                    if (rawUrl.isBlank()) return
+                    val (resolvedUrl, headers) = unwrapVuflixUrl(rawUrl)
+                    val name = "Vuflix [$providerName] $quality$extra"
+                    if (resolvedUrl.contains(".m3u8") || item.optString("type", "hls") == "hls") {
+                        callback(directM3u8Link("Vuflix-$provider", resolvedUrl, headers = headers, quality = getQualityFromName(quality), name = name))
+                    } else {
+                        callback(
+                            newExtractorLink("Vuflix-$provider", name, resolvedUrl, ExtractorLinkType.VIDEO) {
+                                this.headers = headers
+                                this.quality = getQualityFromName(quality)
+                            }
+                        )
+                    }
+                }
+
+                item.optJSONArray("qualities")?.let { quals ->
+                    for (q in 0 until quals.length()) {
+                        val qObj = quals.optJSONObject(q) ?: continue
+                        emit(qObj.optString("url"), qObj.optString("quality", "Auto"), "")
+                    }
+                }
+                item.optJSONArray("candidates")?.let { cands ->
+                    for (c in 0 until cands.length()) {
+                        val cObj = cands.optJSONObject(c) ?: continue
+                        emit(cObj.optString("url"), cObj.optString("quality", "1080p"), " Mirror ${c + 1}")
+                    }
+                }
+                item.optJSONArray("audioTracks")?.let { tracks ->
+                    for (t in 0 until tracks.length()) {
+                        val tObj = tracks.optJSONObject(t) ?: continue
+                        val rawUrl = tObj.optString("switchUrl").takeIf { it.isNotBlank() } ?: tObj.optString("url")
+                        val label = tObj.optString("label").takeIf { it.isNotBlank() }
+                            ?: tObj.optString("language").takeIf { it.isNotBlank() } ?: "Audio"
+                        emit(rawUrl, label, " Audio")
+                    }
+                }
+                val primaryUrl = item.optString("url")
+                if (primaryUrl.isNotBlank()) {
+                    emit(primaryUrl, item.optString("quality", "HD"), "")
+                }
             }
         }
     }
