@@ -178,7 +178,7 @@ class VidboxProvider : MainAPI() {
             { invokeNxsha(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeMax(link.id, link.season, link.episode, subtitleCallback, callback) },
             { invokeTongo(link.id, link.season, link.episode, callback) },
-            { invokeRive(link.id, link.season, subtitleCallback, callback) },
+            { invokeRive(link.id, link.season, link.episode, subtitleCallback, callback) },
         )
         return true
     }

@@ -767,27 +767,37 @@ object VidboxExtractor {
     }
 
     // -------------------------------------------------------------------------------------------
-    // Rive (rivestream.app) - plain GET, no session/cookies needed, just a static secretKey
-    // lifted from its client bundle. Movie-only: the same key 401s on requestID=tvVideoProvider
-    // (TV apparently needs a different one not yet found).
+    // Rive (rivestream.app) - backed by its scrapper microservice, plain GET per provider, no
+    // session/secretKey needed. The old www.rivestream.app/api/backendfetch + secretKey endpoint
+    // this used to hit is dead ("Invalid secret key"); this is the current API it moved to.
     // -------------------------------------------------------------------------------------------
-    private const val riveApi = "https://www.rivestream.app/api/backendfetch"
-    private const val riveSecretKey = "LTcxZGI2MjNk"
+    private const val riveApi = "https://scrapper.rivestream.app/api/provider"
+    private const val riveReferer = "https://www.rivestream.app/"
+    private const val riveOrigin = "https://www.rivestream.app"
     private val riveProviders = listOf(
         "apex", "pulse", "solstice", "quasar", "horizon", "primevids", "flowcast", "asiacloud", "citadel", "hindicast", "guru"
     )
+    // These two providers dedupe/cache by a coarse time bucket; matches the site's own client.
+    private val riveCacheBustedProviders = setOf("primevids", "citadel")
 
     suspend fun invokeRive(
         tmdbId: Int?,
         season: Int?,
+        episode: Int?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        if (tmdbId == null || season != null) return
-        val headers = mapOf("Referer" to "https://www.rivestream.app/")
+        if (tmdbId == null) return
+        val headers = mapOf(
+            "Referer" to riveReferer,
+            "Origin" to riveOrigin,
+            "Accept" to "application/json, text/plain, */*",
+        )
 
         riveProviders.amap { service ->
-            val url = "$riveApi?requestID=movieVideoProvider&id=$tmdbId&service=$service&secretKey=$riveSecretKey&proxyMode=undefined"
+            val seasonEpisode = if (season != null) "&season=$season&episode=${episode ?: 1}" else ""
+            val cacheBust = if (service in riveCacheBustedProviders) "&cb=${System.currentTimeMillis() / 3000000}" else ""
+            val url = "$riveApi?provider=$service&id=$tmdbId$seasonEpisode$cacheBust"
             val data = runCatching { JSONObject(app.get(url, headers = headers).text).optJSONObject("data") }.getOrNull() ?: return@amap
 
             data.optJSONArray("captions")?.let { caps ->
