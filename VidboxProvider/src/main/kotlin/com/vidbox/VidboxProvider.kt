@@ -24,9 +24,12 @@ import com.vidbox.VidboxExtractor.invoke2Embed
 import com.vidbox.VidboxExtractor.invokeBravo
 import com.vidbox.VidboxExtractor.invokeCinemaos
 import com.vidbox.VidboxExtractor.invokeFrembed
+import com.vidbox.VidboxExtractor.invokeMax
 import com.vidbox.VidboxExtractor.invokeMplay
 import com.vidbox.VidboxExtractor.invokeNxsha
 import com.vidbox.VidboxExtractor.invokePeachify
+import com.vidbox.VidboxExtractor.invokeRive
+import com.vidbox.VidboxExtractor.invokeTongo
 import com.vidbox.VidboxExtractor.invokeVideasy
 import com.vidbox.VidboxExtractor.invokeVidlink
 import com.vidbox.VidboxExtractor.invokeVidnest
@@ -173,6 +176,9 @@ class VidboxProvider : MainAPI() {
             { invokeCinemaos(link.id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
             { invokeBravo(link.id, link.season, link.episode, callback) },
             { invokeNxsha(link.id, link.season, link.episode, subtitleCallback, callback) },
+            { invokeMax(link.id, link.season, link.episode, subtitleCallback, callback) },
+            { invokeTongo(link.id, link.season, link.episode, callback) },
+            { invokeRive(link.id, link.season, subtitleCallback, callback) },
         )
         return true
     }

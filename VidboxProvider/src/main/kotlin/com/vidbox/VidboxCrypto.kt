@@ -3,6 +3,8 @@
 package com.vidbox
 
 import android.util.Base64
+import com.dylibso.chicory.runtime.Instance
+import com.dylibso.chicory.wasm.Parser
 import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.Mac
@@ -177,5 +179,29 @@ object MvmCipher {
             if (out[i] != MAGIC[i]) throw IllegalStateException("mvm1 decrypt failed: bad seed or tampered payload")
         }
         return String(out, MAGIC.size, out.size - MAGIC.size, Charsets.UTF_8)
+    }
+}
+
+/**
+ * data.vidsrcme.ru ("Max") returns `stream_urls` as a single ChaCha20-encrypted, base64
+ * blob when protection is on, decryptable only by a tiny WASM module the server recompiles
+ * (with scattered/obfuscated data segments) roughly every 5 minutes - there's no stable key
+ * to extract statically, so this runs the fetched module the same way the site's own
+ * vsdec.js does: alloc(len) -> write ciphertext into linear memory -> decrypt(ptr, len)
+ * -> read outLen UTF-8 bytes starting 12 bytes past ptr (matches vsdec.js's `ptr + 12`).
+ */
+object WasmStreamDecryptor {
+    fun decrypt(wasmBytes: ByteArray, cipherB64: String): List<String> {
+        val instance = Instance.builder(Parser.parse(wasmBytes)).build()
+        val alloc = instance.export("alloc")
+        val decrypt = instance.export("decrypt")
+        val memory = instance.memory()
+
+        val enc = Base64.decode(cipherB64, Base64.DEFAULT)
+        val ptr = alloc.apply(enc.size.toLong())[0].toInt()
+        memory.write(ptr, enc, 0, enc.size)
+        val outLen = decrypt.apply(ptr.toLong(), enc.size.toLong())[0].toInt()
+        val out = memory.readBytes(ptr + 12, outLen)
+        return String(out, Charsets.UTF_8).split("\n").filter { it.isNotBlank() }
     }
 }

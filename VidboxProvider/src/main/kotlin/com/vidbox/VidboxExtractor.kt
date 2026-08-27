@@ -671,6 +671,155 @@ object VidboxExtractor {
     }
 
     // -------------------------------------------------------------------------------------------
+    // Max (ythd.org -> cloudorchestranova.com -> data.vidsrcme.ru) - the API's `stream_urls` is
+    // WASM-ChaCha20-encrypted (see WasmStreamDecryptor); each decrypted master.m3u8 also needs a
+    // short-lived, IP-bound JWT from that host's own /generate.php stamped on as ?token=.
+    // -------------------------------------------------------------------------------------------
+    private const val vidsrcmeApi = "https://data.vidsrcme.ru"
+    private val maxHeaders = mapOf("Referer" to "https://cloudorchestranova.com/", "Origin" to "https://cloudorchestranova.com")
+
+    suspend fun invokeMax(
+        tmdbId: Int?,
+        season: Int?,
+        episode: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        if (tmdbId == null) return
+        val type = if (season == null) "movie" else "tv"
+        var apiUrl = "$vidsrcmeApi/api.php?type=$type&tmdb=$tmdbId&stream_urls"
+        if (season != null) apiUrl += "&season=$season"
+        if (episode != null) apiUrl += "&episode=$episode"
+
+        val json = runCatching { JSONObject(app.get(apiUrl, headers = maxHeaders).text) }.getOrNull() ?: return
+        val data = json.optJSONObject("data") ?: return
+
+        json.optJSONArray("default_subs")?.let { subs ->
+            for (i in 0 until subs.length()) {
+                val sub = subs.optJSONObject(i) ?: continue
+                val subUrl = sub.optString("url").takeIf { it.isNotBlank() }
+                    ?: sub.optString("file").takeIf { it.isNotBlank() } ?: continue
+                val lang = sub.optString("label").takeIf { it.isNotBlank() } ?: sub.optString("lang", "Unknown")
+                subtitleCallback(SubtitleFile(lang, subUrl))
+            }
+        }
+
+        val streamUrlsRaw = data.opt("stream_urls")
+        val masterUrls: List<String> = when (streamUrlsRaw) {
+            is JSONArray -> (0 until streamUrlsRaw.length()).mapNotNull { streamUrlsRaw.optString(it).takeIf(String::isNotBlank) }
+            is String -> {
+                val vs = json.optJSONObject("vs") ?: return
+                val wasmBytes = vs.optString("wasm_url").takeIf { it.isNotBlank() }?.let {
+                    runCatching { app.get(it, headers = maxHeaders).body.bytes() }.getOrNull()
+                } ?: vs.optString("wasm").takeIf { it.isNotBlank() }?.let { Base64.decode(it, Base64.DEFAULT) }
+                if (wasmBytes == null) return
+                runCatching { WasmStreamDecryptor.decrypt(wasmBytes, streamUrlsRaw) }.getOrNull() ?: return
+            }
+            else -> return
+        }
+
+        masterUrls.forEachIndexed { i, masterUrl ->
+            val origin = runCatching { java.net.URL(masterUrl) }.getOrNull()?.let { "${it.protocol}://${it.host}" } ?: return@forEachIndexed
+            val token = runCatching { app.get("$origin/generate.php", headers = maxHeaders).text.trim() }.getOrNull()
+            val finalUrl = if (token.isNullOrBlank()) masterUrl else masterUrl + (if ("?" in masterUrl) "&" else "?") + "token=$token"
+            callback(directM3u8Link("Max", finalUrl, headers = maxHeaders, name = "Max${if (masterUrls.size > 1) " ${i + 1}" else ""}"))
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Tongo (nontongo.win -> vibuxer.com) - nontongo's loadmix.php/view1.php hops are both
+    // directly reachable by URL (no need to scrape the embed page first); the final vibuxer.com
+    // page is a StreamHG-style packed JWPlayer script whose `links` object offers a same-host
+    // relative m3u8 (hls4) plus two CDN fallbacks (hls3/hls2) - hls4 needs no extra token/referer.
+    // -------------------------------------------------------------------------------------------
+    private const val nontongoApi = "https://nontongo.win"
+
+    suspend fun invokeTongo(tmdbId: Int?, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) {
+        if (tmdbId == null) return
+        val type = if (season == null) "movie" else "tv"
+        var loadmixUrl = "$nontongoApi/x1/promax/loadmix.php?id=$tmdbId&type=$type"
+        if (season != null) loadmixUrl += "&season=$season"
+        if (episode != null) loadmixUrl += "&episode=$episode"
+
+        val loadmixHtml = runCatching { app.get(loadmixUrl, headers = vidboxHeaders).text }.getOrNull() ?: return
+        val viewUrl = Regex("""id=["']player["'][^>]*src=["']([^"']+)["']""").find(loadmixHtml)?.groupValues?.get(1) ?: return
+
+        val viewHtml = runCatching { app.get(viewUrl, headers = mapOf("Referer" to loadmixUrl)).text }.getOrNull() ?: return
+        val atobBlob = Regex("""atob\("([^"]+)"\)""").find(viewHtml)?.groupValues?.get(1) ?: return
+        val decodedHtml = runCatching { String(Base64.decode(atobBlob, Base64.DEFAULT), Charsets.UTF_8) }.getOrNull() ?: return
+        val vibuxerUrl = Regex("""src=["'](https://vibuxer\.com/[^"']+)["']""").find(decodedHtml)?.groupValues?.get(1) ?: return
+
+        val vibuxerHtml = runCatching { app.get(vibuxerUrl, headers = mapOf("Referer" to viewUrl)).text }.getOrNull() ?: return
+        val packedScript = Regex("""eval\(function\(p,a,c,k,e,d\).*?split\('\|'\)\)\)""", RegexOption.DOT_MATCHES_ALL)
+            .find(vibuxerHtml)?.value ?: return
+        val unpacked = runCatching { getAndUnpack(packedScript) }.getOrNull() ?: return
+        val links = Regex("""var links=(\{.*?\});""").find(unpacked)?.groupValues?.get(1)
+            ?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return
+
+        val vibuxerOrigin = "https://vibuxer.com"
+        val chosen = links.optString("hls4").takeIf { it.isNotBlank() }
+            ?: links.optString("hls3").takeIf { it.isNotBlank() }
+            ?: links.optString("hls2").takeIf { it.isNotBlank() }
+            ?: return
+        val streamUrl = if (chosen.startsWith("http")) chosen else "$vibuxerOrigin$chosen"
+
+        callback(directM3u8Link("Tongo", streamUrl, referer = vibuxerOrigin, headers = mapOf("Referer" to "$vibuxerOrigin/")))
+    }
+
+    // -------------------------------------------------------------------------------------------
+    // Rive (rivestream.app) - plain GET, no session/cookies needed, just a static secretKey
+    // lifted from its client bundle. Movie-only: the same key 401s on requestID=tvVideoProvider
+    // (TV apparently needs a different one not yet found).
+    // -------------------------------------------------------------------------------------------
+    private const val riveApi = "https://www.rivestream.app/api/backendfetch"
+    private const val riveSecretKey = "LTcxZGI2MjNk"
+    private val riveProviders = listOf(
+        "apex", "pulse", "solstice", "quasar", "horizon", "primevids", "flowcast", "asiacloud", "citadel", "hindicast", "guru"
+    )
+
+    suspend fun invokeRive(
+        tmdbId: Int?,
+        season: Int?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        if (tmdbId == null || season != null) return
+        val headers = mapOf("Referer" to "https://www.rivestream.app/")
+
+        riveProviders.amap { service ->
+            val url = "$riveApi?requestID=movieVideoProvider&id=$tmdbId&service=$service&secretKey=$riveSecretKey&proxyMode=undefined"
+            val data = runCatching { JSONObject(app.get(url, headers = headers).text).optJSONObject("data") }.getOrNull() ?: return@amap
+
+            data.optJSONArray("captions")?.let { caps ->
+                for (i in 0 until caps.length()) {
+                    val cap = caps.optJSONObject(i) ?: continue
+                    val subUrl = cap.optString("file").takeIf { it.isNotBlank() } ?: continue
+                    val lang = cap.optString("label").takeIf { it.isNotBlank() } ?: cap.optString("language", "Unknown")
+                    subtitleCallback(SubtitleFile(lang, subUrl))
+                }
+            }
+
+            val sources = data.optJSONArray("sources") ?: return@amap
+            for (i in 0 until sources.length()) {
+                val src = sources.optJSONObject(i) ?: continue
+                val srcUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val label = src.opt("quality")?.toString() ?: ""
+                val name = "Rive [$service] $label"
+                if (src.optString("format") == "hls") {
+                    callback(directM3u8Link("Rive-$service", srcUrl, headers = headers, quality = getQualityFromName(label), name = name))
+                } else {
+                    callback(
+                        newExtractorLink("Rive-$service", name, srcUrl, ExtractorLinkType.VIDEO) {
+                            this.headers = headers
+                            this.quality = getQualityFromName(label)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------------------------
     // Bravo (moviesapi.to) - standard JWPlayer packed-script iframe aggregator. Unreachable from
     // the research sandbox (network-level block), so this is the known pattern, not live-verified.
     // -------------------------------------------------------------------------------------------

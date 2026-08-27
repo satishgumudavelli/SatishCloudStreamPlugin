@@ -24,3 +24,10 @@ cloudstream {
 
     iconUrl = "https://vidbox.vc/logo.png"
 }
+
+dependencies {
+    // Pure-JVM WASM runtime (no JNI) - the Max server's stream list is decrypted by a
+    // ChaCha20 WASM module the site recompiles every ~5min, so there's no static key to
+    // hardcode; this runs the module itself exactly like the site's own JS does.
+    implementation("com.dylibso.chicory:runtime:1.7.5")
+}

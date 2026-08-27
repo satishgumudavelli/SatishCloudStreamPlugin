@@ -46,7 +46,7 @@ subprojects {
         namespace = "com.gsatish"
 
         defaultConfig {
-            minSdk = 21
+            minSdk = 28
             compileSdkVersion(35)
             targetSdk = 35
         }
