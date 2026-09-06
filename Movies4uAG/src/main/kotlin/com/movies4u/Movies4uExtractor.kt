@@ -15,13 +15,45 @@ object Movies4uExtractor {
     private val skipLabels = listOf("telegram", "watch online", "with android app")
     private val directExtensions = listOf(".mkv", ".mp4", ".avi", ".mov")
 
-    // Dispatches every mirror link found on an mdrive.cloud page to the right resolver.
-    // Verified against real captures: HubCloud (hubcloud.cx) and its VegaCloud-branded clone
-    // (vcloud.fit) share the same "generate link" -> mirror-buttons template, HubCDN just wraps
-    // an already-final CDN url in a query param, and Gofile/PixelDrain are handled by cloudstream
-    // core's own built-in extractors. Filepress/vegadrive/1fichier/vikingfile/fastdl mirrors are
-    // skipped: their pages are JS-driven (React SPA) or were unreachable/expired when checked, so
-    // there's nothing verified to resolve them against.
+    // A movie's mdrive.cloud page comes in two shapes: a single-quality page whose mirror
+    // buttons sit directly under #container-content-single, or a multi-quality page (several of
+    // the post's own quality buttons happen to share one mdrive link) where each quality gets its
+    // own <h4> label followed by its mirror buttons. Either way the buttons can be wrapped in a
+    // <p> or a <div class="downloads-btns-div"> - the site isn't consistent about it - so select
+    // anchors directly instead of assuming one wrapper.
+    suspend fun resolveMdrivePage(
+        mdriveUrl: String,
+        fallbackQuality: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val doc = runCatching { app.get(mdriveUrl).document }.getOrNull() ?: return
+        val container = doc.selectFirst("#container-content-single") ?: return
+        val qualityHeaders = container.select("h4")
+
+        if (qualityHeaders.isEmpty()) {
+            container.select("a[href^=http]").distinctBy { it.attr("href") }.forEach { a ->
+                resolve(a.attr("href"), fallbackQuality, subtitleCallback, callback)
+            }
+        } else {
+            qualityHeaders.forEach { h4 ->
+                val quality = h4.text().trim().ifBlank { fallbackQuality }
+                h4.nextElementSibling()?.select("a[href^=http]")?.forEach { a ->
+                    resolve(a.attr("href"), quality, subtitleCallback, callback)
+                }
+            }
+        }
+    }
+
+    // Dispatches a single mirror link (from a mdrive.cloud page or a series episode) to the
+    // right resolver. Verified against real captures: HubCloud (hubcloud.cx) and its
+    // VegaCloud-branded clone (vcloud.fit) share the same "generate link" -> mirror-buttons
+    // template, HubCDN and fastdl.zip both just wrap an already-final CDN url in a query/JS
+    // param, GDFlix exposes a couple of already-resolved CDN mirrors as plain links (no captcha
+    // needed for those), and Gofile/PixelDrain are handled by cloudstream core's own built-in
+    // extractors. Filepress/vegadrive/1fichier/vikingfile mirrors are skipped: their pages are
+    // JS-driven (React SPA) or were unreachable/expired when checked, so there's nothing
+    // verified to resolve them against.
     suspend fun resolve(
         href: String,
         quality: String,
@@ -32,6 +64,8 @@ object Movies4uExtractor {
         when {
             lower.contains("hubcloud") || lower.contains("vcloud") -> invokeHubCloud(href, quality, callback)
             lower.contains("hubcdn.") -> invokeHubCdn(href, quality, callback)
+            lower.contains("gdflix") -> invokeGdflix(href, quality, callback)
+            lower.contains("fastdl.zip") -> invokeFastdl(href, quality, callback)
             lower.contains("gofile.io") || lower.contains("pixeldrain") ->
                 runCatching { loadExtractor(href, href, subtitleCallback, callback) }
             directExtensions.any { lower.substringBefore("?").endsWith(it) } ->
@@ -97,6 +131,45 @@ object Movies4uExtractor {
         val finalUrl = runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrDefault(raw)
         callback(
             newExtractorLink("HubCDN", "HubCDN $quality", finalUrl, ExtractorLinkType.VIDEO) {
+                this.quality = getQualityFromName(quality)
+            }
+        )
+    }
+
+    // GDFlix's file page normally gates its fast mirrors behind a Cloudflare Turnstile captcha
+    // (an "original"/"direct" POST using a token from solving it), but for a plain (non-premium)
+    // file those captcha-only buttons just aren't rendered at all - what's left in the file-info
+    // card body are a handful of already-resolved absolute mirrors (Instant DL, a direct R2.dev
+    // CDN link) alongside a login-gated 10Gbps option, a Telegram bot deep link, a Multiup/Gofile
+    // aggregator and an unverified "DIRECT SERVER" index redirect. Only the resolved CDN mirrors
+    // are safe to trust without further reversing, so keep only those.
+    private val gdflixSkipHosts = listOf("filesgram", "goflix.sbs", "indexserver")
+
+    private suspend fun invokeGdflix(url: String, quality: String, callback: (ExtractorLink) -> Unit) {
+        val doc = runCatching { app.get(url).document }.getOrNull() ?: return
+        doc.select(".card-body a[href^=http]").forEach { a ->
+            val href = a.attr("href")
+            val label = a.text().trim()
+            if (label.isBlank() || gdflixSkipHosts.any { href.contains(it, ignoreCase = true) }) return@forEach
+
+            callback(
+                newExtractorLink("GDFlix", "GDFlix [$label] $quality", href, ExtractorLinkType.VIDEO) {
+                    this.quality = getQualityFromName(quality)
+                }
+            )
+        }
+    }
+
+    // fastdl.zip's embed page is a plain redirect stub: a `var reurl = "https://fastdl.zip/dl.php
+    // ?link=<real file url>"` sits right in its inline JS - same "link= param is the final url"
+    // shape as HubCDN, so pull it straight out instead of following the redirect page itself.
+    private suspend fun invokeFastdl(url: String, quality: String, callback: (ExtractorLink) -> Unit) {
+        val body = runCatching { app.get(url).text }.getOrNull() ?: return
+        val reurl = Regex("""var reurl\s*=\s*"([^"]+)"""").find(body)?.groupValues?.get(1) ?: return
+        val raw = Regex("""[?&]link=(.+)$""").find(reurl)?.groupValues?.get(1)
+        val finalUrl = raw?.let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) } ?: reurl
+        callback(
+            newExtractorLink("FastDL", "FastDL $quality", finalUrl, ExtractorLinkType.VIDEO) {
                 this.quality = getQualityFromName(quality)
             }
         )

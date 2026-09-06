@@ -61,32 +61,39 @@ class Movies4uProvider : MainAPI() {
         val year = Regex("""(19|20)\d{2}""").find(title)?.value?.toIntOrNull()
         val postEl = document.selectFirst(".post.type-post")
 
-        // Quality -> mdrive.cloud page, same for movies and series (h4 label, p > a link).
-        val qualityLinks = document.select(".post.type-post p a")
-            .filter { it.attr("href").contains("mdrive.cloud/mdisk") }
-            .map { a ->
-                val quality = a.parent()?.previousElementSibling()
+        // Quality -> mdrive.cloud page (h4 label followed by the link). The site inconsistently
+        // wraps that link in a <p> or a <div class="downloads-btns-div"> from post to post, so
+        // match the mdrive href directly and walk up to whichever wrapper actually holds it
+        // instead of assuming <p> - the old p-only selector silently dropped every mdrive link
+        // that happened to sit in a downloads-btns-div (e.g. movies with several quality tiers).
+        val qualityLinks = postEl?.select("a[href*=mdrive.cloud/mdisk]")
+            ?.map { a ->
+                val quality = a.closest("p, div.downloads-btns-div")?.previousElementSibling()
                     ?.takeIf { it.tagName() == "h4" || it.tagName() == "h3" }
                     ?.text()?.trim()?.ifBlank { null } ?: title
                 quality to a.attr("href")
             }
+            ?.distinctBy { it.second } // several quality buttons can point at the same mdrive page
+            ?: emptyList()
         if (qualityLinks.isEmpty()) return null
 
         return if (postEl?.isWebSeries() == true) {
             // A series' mdrive page doesn't show single-file mirrors like a movie's does - it
-            // lists one "-:Episodes: N:-" heading + a downloads-btns-div of direct mirror links
-            // per episode. Skip whole-season zip qualities (no per-episode breakdown to expand)
-            // and merge the per-quality episode lists together by episode number.
+            // lists one "-:Episodes: N:-" heading + its mirror links right after. The heading tag
+            // (h4 or h5) and the mirror wrapper (<p> or <div class="downloads-btns-div">) both
+            // vary from series to series, so match the heading by its text and just take
+            // whatever its next sibling is, rather than assuming one specific tag/wrapper pair.
+            // Skip whole-season zip qualities (no per-episode breakdown to expand) and merge the
+            // per-quality episode lists together by episode number.
             val perQuality = qualityLinks
                 .filterNot { (quality, _) -> quality.contains("zip", ignoreCase = true) || quality.contains("batch", ignoreCase = true) }
                 .amap { (quality, mdriveUrl) ->
                     val mdriveDoc = runCatching { app.get(mdriveUrl).document }.getOrNull()
-                    mdriveDoc?.select(".downloads-btns-div")?.mapNotNull { div ->
-                        val epNum = div.previousElementSibling()
-                            ?.takeIf { it.tagName() == "h5" }
-                            ?.text()?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() }
+                    mdriveDoc?.selectFirst("#container-content-single")?.select("h3, h4, h5")?.mapNotNull { heading ->
+                        val epNum = Regex("""(?i)episodes?[:\s]*(\d+)""").find(heading.text())?.groupValues?.get(1)?.toIntOrNull()
                             ?: return@mapNotNull null
-                        epNum to div.select("a[href^=http]").map { a -> Movies4uLink(quality, a.attr("href"), direct = true) }
+                        val mirrors = heading.nextElementSibling()?.select("a[href^=http]") ?: return@mapNotNull null
+                        epNum to mirrors.map { a -> Movies4uLink(quality, a.attr("href"), direct = true) }
                     } ?: emptyList()
                 }
                 .flatten()
@@ -128,16 +135,9 @@ class Movies4uProvider : MainAPI() {
         links.amap { link ->
             if (link.direct) {
                 Movies4uExtractor.resolve(link.url, link.quality, subtitleCallback, callback)
-                return@amap
+            } else {
+                Movies4uExtractor.resolveMdrivePage(link.url, link.quality, subtitleCallback, callback)
             }
-            val mdriveDoc = runCatching { app.get(link.url).document }.getOrNull() ?: return@amap
-            mdriveDoc.select("#theme-main p a")
-                .map { it.attr("href") }
-                .filter { it.startsWith("http") }
-                .distinct()
-                .amap { mirrorUrl ->
-                    Movies4uExtractor.resolve(mirrorUrl, link.quality, subtitleCallback, callback)
-                }
         }
         return true
     }
