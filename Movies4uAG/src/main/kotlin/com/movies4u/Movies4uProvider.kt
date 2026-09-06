@@ -78,37 +78,61 @@ class Movies4uProvider : MainAPI() {
         if (qualityLinks.isEmpty()) return null
 
         return if (postEl?.isWebSeries() == true) {
-            // A series' mdrive page doesn't show single-file mirrors like a movie's does - it
-            // lists one "-:Episodes: N:-" heading + its mirror links right after. The heading tag
-            // (h4 or h5) and the mirror wrapper (<p> or <div class="downloads-btns-div">) both
-            // vary from series to series, so match the heading by its text and just take
-            // whatever its next sibling is, rather than assuming one specific tag/wrapper pair.
-            // Skip whole-season zip qualities (no per-episode breakdown to expand) and merge the
-            // per-quality episode lists together by episode number.
-            val perQuality = qualityLinks
+            // A series' mdrive page usually lists one "-:Episodes: N:-" heading + its mirror
+            // links right after (heading tag h3/h4/h5, wrapper <p> or div.downloads-btns-div -
+            // both vary per series, so match the heading by its text and take whatever its next
+            // sibling is). Some series are only ever released as a whole-season batch though -
+            // their mdrive page has no "Episodes:" heading at all, just the movie-style h4
+            // quality tiers - so fall back to treating the entire page as one episode, keeping
+            // each of ITS OWN quality headers (if any) as alternate sources for that episode.
+            // Skip whole-season zip qualities when a real per-episode breakdown also exists
+            // elsewhere in the same post, and key everything by (season, episode) - the post's
+            // own quality label carries the season number for multi-season posts.
+            val perSeasonEpisodes = qualityLinks
                 .filterNot { (quality, _) -> quality.contains("zip", ignoreCase = true) || quality.contains("batch", ignoreCase = true) }
                 .amap { (quality, mdriveUrl) ->
-                    val mdriveDoc = runCatching { app.get(mdriveUrl).document }.getOrNull()
-                    mdriveDoc?.selectFirst("#container-content-single")?.select("h3, h4, h5")?.mapNotNull { heading ->
+                    val season = Regex("""(?i)season\s*(\d+)""").find(quality)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                    val container = runCatching { app.get(mdriveUrl).document }.getOrNull()
+                        ?.selectFirst("#container-content-single")
+
+                    val episodeHeadings = container?.select("h3, h4, h5")?.mapNotNull { heading ->
                         val epNum = Regex("""(?i)episodes?[:\s]*(\d+)""").find(heading.text())?.groupValues?.get(1)?.toIntOrNull()
                             ?: return@mapNotNull null
                         val mirrors = heading.nextElementSibling()?.select("a[href^=http]") ?: return@mapNotNull null
-                        epNum to mirrors.map { a -> Movies4uLink(quality, a.attr("href"), direct = true) }
+                        Triple(season, epNum, mirrors.map { a -> Movies4uLink(quality, a.attr("href"), direct = true) })
                     } ?: emptyList()
+
+                    if (episodeHeadings.isNotEmpty()) {
+                        episodeHeadings
+                    } else {
+                        val qualityHeaders = container?.select("h4") ?: emptyList()
+                        val links = if (qualityHeaders.isEmpty()) {
+                            container?.select("a[href^=http]")?.map { a -> Movies4uLink(quality, a.attr("href"), direct = true) } ?: emptyList()
+                        } else {
+                            qualityHeaders.flatMap { h4 ->
+                                val qLabel = h4.text().trim().ifBlank { quality }
+                                h4.nextElementSibling()?.select("a[href^=http]")?.map { a -> Movies4uLink(qLabel, a.attr("href"), direct = true) } ?: emptyList()
+                            }
+                        }
+                        if (links.isEmpty()) emptyList() else listOf(Triple(season, 1, links))
+                    }
                 }
                 .flatten()
 
-            val episodeLinks = sortedMapOf<Int, MutableList<Movies4uLink>>()
-            perQuality.forEach { (epNum, links) -> episodeLinks.getOrPut(epNum) { mutableListOf() }.addAll(links) }
+            val episodeLinks = linkedMapOf<Pair<Int, Int>, MutableList<Movies4uLink>>()
+            perSeasonEpisodes.forEach { (season, epNum, links) -> episodeLinks.getOrPut(season to epNum) { mutableListOf() }.addAll(links) }
             if (episodeLinks.isEmpty()) return null
 
-            val episodes = episodeLinks.map { (epNum, links) ->
-                newEpisode(links.toJson()) {
-                    this.name = "Episode $epNum"
-                    this.season = 1
-                    this.episode = epNum
+            val episodes = episodeLinks.entries
+                .sortedWith(compareBy({ it.key.first }, { it.key.second }))
+                .map { (key, links) ->
+                    val (season, epNum) = key
+                    newEpisode(links.toJson()) {
+                        this.name = "Episode $epNum"
+                        this.season = season
+                        this.episode = epNum
+                    }
                 }
-            }
 
             newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) {
                 this.posterUrl = poster
