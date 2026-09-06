@@ -1,0 +1,35 @@
+Movies4uAG/src/main/kotlin/com/movies4u/ZipCentralDirectory.kt
+  s_fcc618935f0c20::t_2bcb9fe4009e2e 1-75
+Movies4uAG/src/main/kotlin/com/movies4u/Movies4uProviderPlugin.kt
+  s_fcc618935f0c20::t_20a082dc1fe05b 11-14
+Movies4uAG/src/main/kotlin/com/movies4u/ZipStreamProxy.kt
+  s_fcc618935f0c20::t_6b1decdfaea45a 1-77
+Movies4uAG/src/main/kotlin/com/movies4u/Movies4uExtractor.kt
+  s_fcc618935f0c20::t_687c21dd6acfea 256-259
+  s_fcc618935f0c20::t_70c5c8c8e7641e 179-182
+  s_fcc618935f0c20::t_46545604781e06 120-123
+  s_fcc618935f0c20::t_d874a83dcef591 27-28,30-31,34-36
+  s_fcc618935f0c20::t_b97f92fd8fc4a2 11-12
+  s_fcc618935f0c20::t_ee7bc1df0317d6 23,29,32-33,37-82
+  s_fcc618935f0c20::t_dd566d05a392eb 234-238
+  s_fcc618935f0c20::t_80fbf576895951 203-206
+  s_fcc618935f0c20::t_6cb3d0318f6ca2 83
+Movies4uAG/build.gradle.kts
+  s_fcc618935f0c20::t_fcf88b43cb243b 17-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cd7da9dd7d4da1dff747e8518f7a35e00811cc3c",
+  "prompts": {},
+  "sessions": {
+    "s_fcc618935f0c20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5005903a-2b03-487c-8550-0cd07e4df3b3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
