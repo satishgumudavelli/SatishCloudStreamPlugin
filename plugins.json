@@ -22,10 +22,10 @@
     },
     {
         "iconUrl": "https://movies4u.ag/favicon.ico",
-        "fileHash": "sha256-306bf73f1d724ab56975371131a22eaba6fd4dc758eb759a7ff2116fe38bf062",
+        "fileHash": "sha256-28dc70f5ba9c4365b4d05803792167dc8501b6b0e67f2036a628f39f065cbb04",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 31769,
+        "fileSize": 33359,
         "status": 1,
         "language": "hi",
         "authors": [
