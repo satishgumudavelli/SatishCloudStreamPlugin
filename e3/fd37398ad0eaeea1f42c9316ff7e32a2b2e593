@@ -1,0 +1,34 @@
+Movies4u/build.gradle.kts
+  s_fcc618935f0c20::t_3ebc295388c4f4 1-16
+Movies4u/src/main/AndroidManifest.xml
+  s_fcc618935f0c20::t_4e34e84f656fb5 1-2
+Movies4u/src/main/kotlin/com/movies4u/Movies4uProviderPlugin.kt
+  s_fcc618935f0c20::t_f2a4128eea4b7b 1-11
+Movies4u/src/main/kotlin/com/movies4u/Movies4uProvider.kt
+  s_fcc618935f0c20::t_55c01f09147631 65
+  s_fcc618935f0c20::t_679893896941b0 1-13,15-23,26-48,51-64,66-80,82,85-120
+  s_fcc618935f0c20::t_a4b925abd9671e 14
+  s_fcc618935f0c20::t_841101e89a456c 49-50
+  s_fcc618935f0c20::t_6e748fb4952df0 24-25
+  s_fcc618935f0c20::t_b6691bc396e4a8 81,83-84
+Movies4u/src/main/kotlin/com/movies4u/Movies4uExtractor.kt
+  s_fcc618935f0c20::t_f3ffb5fc08949f 3-4,9,11,16,18-52,54-61,86-94,96-102
+  s_fcc618935f0c20::t_7009880576b6ac 1-2,5-8,10,12-15,17,53,62-85,103-104
+  s_fcc618935f0c20::t_2667d106c5fd36 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e3fd37398ad0eaeea1f42c9316ff7e32a2b2e593",
+  "prompts": {},
+  "sessions": {
+    "s_fcc618935f0c20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5005903a-2b03-487c-8550-0cd07e4df3b3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
