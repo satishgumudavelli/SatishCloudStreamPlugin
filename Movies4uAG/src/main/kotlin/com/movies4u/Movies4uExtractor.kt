@@ -8,6 +8,8 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.URLDecoder
 
 object Movies4uExtractor {
@@ -18,11 +20,66 @@ object Movies4uExtractor {
     // "Complete Season" batch releases serve a .zip (the whole season packed together) on every
     // mirror, not a playable video - the real filename usually only shows up decoded (an R2
     // presigned url carries it inside a response-content-disposition query param, not the path),
-    // so decode before checking. Emitting it as a VIDEO link just gets ExoPlayer a container it
-    // can't sniff (UnrecognizedInputFormatException) - better to emit nothing for it than a
-    // source that's guaranteed to fail.
+    // so decode before checking.
     private fun isZipUrl(url: String): Boolean =
         runCatching { URLDecoder.decode(url, "UTF-8") }.getOrDefault(url).contains(".zip", ignoreCase = true)
+
+    // A presigned R2/S3 url's signature is method-specific - it authorizes GET, not HEAD, which
+    // 403s. Read the total size off a ranged GET's Content-Range response header instead.
+    private fun httpContentLength(url: String): Long? = runCatching {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            setRequestProperty("Range", "bytes=0-0")
+            connectTimeout = 15000
+            readTimeout = 20000
+        }
+        conn.inputStream.use { it.readBytes() }
+        conn.getHeaderField("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+    }.getOrNull()
+
+    private fun httpGetRange(url: String, start: Long, endInclusive: Long): ByteArray? = runCatching {
+        (URL(url).openConnection() as HttpURLConnection).apply {
+            setRequestProperty("Range", "bytes=$start-$endInclusive")
+            connectTimeout = 15000
+            readTimeout = 20000
+        }.inputStream.use { it.readBytes() }
+    }.getOrNull()
+
+    // The zip is never downloaded in full: a Range-fetched tail window is parsed for the central
+    // directory (retrying with a bigger window if the first guess didn't reach far enough back -
+    // a long file-comment field, or just many entries, can push it further from the end), then
+    // each real entry becomes its own ExtractorLink pointing at a ZipStreamProxy url that
+    // range-fetches and inflates just that one episode on demand.
+    private suspend fun invokeZipEpisodes(zipUrl: String, quality: String, callback: (ExtractorLink) -> Unit) {
+        val totalSize = httpContentLength(zipUrl) ?: return
+
+        var windowSize = 65536L
+        var entries: List<ZipFileEntry>? = null
+        while (entries == null && windowSize <= totalSize && windowSize <= 8_388_608L) {
+            val tailStart = (totalSize - windowSize).coerceAtLeast(0)
+            val tail = httpGetRange(zipUrl, tailStart, totalSize - 1) ?: return
+            entries = ZipCentralDirectory.parseEntries(tail, tailStart)
+            windowSize *= 8
+        }
+        val realEntries = entries?.filter { it.uncompSize > 0 && !it.name.endsWith("/") } ?: return
+
+        realEntries.forEach { entry ->
+            val localHeader = httpGetRange(zipUrl, entry.localHeaderOffset, entry.localHeaderOffset + 511) ?: return@forEach
+            val dataOffset = ZipCentralDirectory.localDataOffset(localHeader, entry.localHeaderOffset)
+            val proxyUrl = ZipStreamProxy.register(
+                ZipEntryRef(zipUrl, dataOffset, entry.compSize, entry.uncompSize, stored = entry.method == 0)
+            )
+
+            val fileName = entry.name.substringAfterLast('/')
+            val episodeLabel = Regex("""(?i)S\d{1,2}E(\d{1,3})""").find(fileName)
+                ?.let { "Episode ${it.groupValues[1].toInt()}" } ?: fileName
+
+            callback(
+                newExtractorLink("Movies4u", "Movies4u [$episodeLabel] $quality", proxyUrl, ExtractorLinkType.VIDEO) {
+                    this.quality = getQualityFromName(quality)
+                }
+            )
+        }
+    }
 
     // A movie's mdrive.cloud page comes in two shapes: a single-quality page whose mirror
     // buttons sit directly under #container-content-single, or a multi-quality page (several of
@@ -60,9 +117,10 @@ object Movies4uExtractor {
     // template, HubCDN and fastdl.zip both just wrap an already-final CDN url in a query/JS
     // param, GDFlix exposes a couple of already-resolved CDN mirrors as plain links (no captcha
     // needed for those), and Gofile/PixelDrain are handled by cloudstream core's own built-in
-    // extractors. Filepress/vegadrive/1fichier/vikingfile mirrors are skipped: their pages are
-    // JS-driven (React SPA) or were unreachable/expired when checked, so there's nothing
-    // verified to resolve them against.
+    // extractors. Any of these that turns out to be a "Complete Season" .zip gets expanded into
+    // its individual episodes via invokeZipEpisodes instead of being emitted as-is. Filepress/
+    // vegadrive/1fichier/vikingfile mirrors are skipped: their pages are JS-driven (React SPA) or
+    // were unreachable/expired when checked, so there's nothing verified to resolve them against.
     suspend fun resolve(
         href: String,
         quality: String,
@@ -118,7 +176,10 @@ object Movies4uExtractor {
                 Regex("""getElementById\("$id"\)\.href\s*=\s*["']([^"']+)["']""")
                     .find(finalHtml)?.groupValues?.get(1)?.let { href = it }
             }
-            if (isZipUrl(href)) return@forEach
+            if (isZipUrl(href)) {
+                invokeZipEpisodes(href, quality, callback)
+                return@forEach
+            }
 
             val name = "HubCloud [$label] $quality" + (size?.let { " ($it)" } ?: "")
             callback(
@@ -139,7 +200,10 @@ object Movies4uExtractor {
     private suspend fun invokeHubCdn(href: String, quality: String, callback: (ExtractorLink) -> Unit) {
         val raw = Regex("""[?&]link=(.+)$""").find(href)?.groupValues?.get(1) ?: return
         val finalUrl = runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrDefault(raw)
-        if (isZipUrl(finalUrl)) return
+        if (isZipUrl(finalUrl)) {
+            invokeZipEpisodes(finalUrl, quality, callback)
+            return
+        }
         callback(
             newExtractorLink("HubCDN", "HubCDN $quality", finalUrl, ExtractorLinkType.VIDEO) {
                 this.quality = getQualityFromName(quality)
@@ -167,7 +231,11 @@ object Movies4uExtractor {
             val isVerifiedMirror = label.contains("instant", ignoreCase = true) ||
                 label.contains("r2", ignoreCase = true) ||
                 href.contains("r2.dev", ignoreCase = true)
-            if (!isVerifiedMirror || isZipUrl(href)) return@forEach
+            if (!isVerifiedMirror) return@forEach
+            if (isZipUrl(href)) {
+                invokeZipEpisodes(href, quality, callback)
+                return@forEach
+            }
 
             callback(
                 newExtractorLink("GDFlix", "GDFlix [$label] $quality", href, ExtractorLinkType.VIDEO) {
@@ -185,7 +253,10 @@ object Movies4uExtractor {
         val reurl = Regex("""var reurl\s*=\s*"([^"]+)"""").find(body)?.groupValues?.get(1) ?: return
         val raw = Regex("""[?&]link=(.+)$""").find(reurl)?.groupValues?.get(1)
         val finalUrl = raw?.let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) } ?: reurl
-        if (isZipUrl(finalUrl)) return
+        if (isZipUrl(finalUrl)) {
+            invokeZipEpisodes(finalUrl, quality, callback)
+            return
+        }
         callback(
             newExtractorLink("FastDL", "FastDL $quality", finalUrl, ExtractorLinkType.VIDEO) {
                 this.quality = getQualityFromName(quality)

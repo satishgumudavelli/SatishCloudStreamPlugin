@@ -8,4 +8,8 @@ class Movies4uProviderPlugin : BasePlugin() {
     override fun load() {
         registerMainAPI(Movies4uProvider())
     }
+
+    override fun beforeUnload() {
+        ZipStreamProxy.stop()
+    }
 }
