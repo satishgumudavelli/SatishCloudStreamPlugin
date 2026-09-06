@@ -15,6 +15,15 @@ object Movies4uExtractor {
     private val skipLabels = listOf("telegram", "watch online", "with android app")
     private val directExtensions = listOf(".mkv", ".mp4", ".avi", ".mov")
 
+    // "Complete Season" batch releases serve a .zip (the whole season packed together) on every
+    // mirror, not a playable video - the real filename usually only shows up decoded (an R2
+    // presigned url carries it inside a response-content-disposition query param, not the path),
+    // so decode before checking. Emitting it as a VIDEO link just gets ExoPlayer a container it
+    // can't sniff (UnrecognizedInputFormatException) - better to emit nothing for it than a
+    // source that's guaranteed to fail.
+    private fun isZipUrl(url: String): Boolean =
+        runCatching { URLDecoder.decode(url, "UTF-8") }.getOrDefault(url).contains(".zip", ignoreCase = true)
+
     // A movie's mdrive.cloud page comes in two shapes: a single-quality page whose mirror
     // buttons sit directly under #container-content-single, or a multi-quality page (several of
     // the post's own quality buttons happen to share one mdrive link) where each quality gets its
@@ -109,6 +118,7 @@ object Movies4uExtractor {
                 Regex("""getElementById\("$id"\)\.href\s*=\s*["']([^"']+)["']""")
                     .find(finalHtml)?.groupValues?.get(1)?.let { href = it }
             }
+            if (isZipUrl(href)) return@forEach
 
             val name = "HubCloud [$label] $quality" + (size?.let { " ($it)" } ?: "")
             callback(
@@ -129,6 +139,7 @@ object Movies4uExtractor {
     private suspend fun invokeHubCdn(href: String, quality: String, callback: (ExtractorLink) -> Unit) {
         val raw = Regex("""[?&]link=(.+)$""").find(href)?.groupValues?.get(1) ?: return
         val finalUrl = runCatching { URLDecoder.decode(raw, "UTF-8") }.getOrDefault(raw)
+        if (isZipUrl(finalUrl)) return
         callback(
             newExtractorLink("HubCDN", "HubCDN $quality", finalUrl, ExtractorLinkType.VIDEO) {
                 this.quality = getQualityFromName(quality)
@@ -141,16 +152,22 @@ object Movies4uExtractor {
     // file those captcha-only buttons just aren't rendered at all - what's left in the file-info
     // card body are a handful of already-resolved absolute mirrors (Instant DL, a direct R2.dev
     // CDN link) alongside a login-gated 10Gbps option, a Telegram bot deep link, a Multiup/Gofile
-    // aggregator and an unverified "DIRECT SERVER" index redirect. Only the resolved CDN mirrors
-    // are safe to trust without further reversing, so keep only those.
-    private val gdflixSkipHosts = listOf("filesgram", "goflix.sbs", "indexserver")
-
+    // aggregator (rotates domains - blacklisting them one at a time is a losing game) and an
+    // unverified "DIRECT SERVER" index redirect. The card body also has a plain, class-less
+    // "Shared By" attribution link (e.g. movies4u.ws) that isn't a mirror at all but does start
+    // with "http" - scoping to real button anchors (a.btn) excludes it. Whitelist only the two
+    // mirrors confirmed to be already-resolved direct CDN files instead of trying to blacklist
+    // every non-mirror/aggregator link that shows up.
     private suspend fun invokeGdflix(url: String, quality: String, callback: (ExtractorLink) -> Unit) {
         val doc = runCatching { app.get(url).document }.getOrNull() ?: return
-        doc.select(".card-body a[href^=http]").forEach { a ->
+        doc.select(".card-body a.btn[href^=http]").forEach { a ->
             val href = a.attr("href")
             val label = a.text().trim()
-            if (label.isBlank() || gdflixSkipHosts.any { href.contains(it, ignoreCase = true) }) return@forEach
+            if (label.isBlank()) return@forEach
+            val isVerifiedMirror = label.contains("instant", ignoreCase = true) ||
+                label.contains("r2", ignoreCase = true) ||
+                href.contains("r2.dev", ignoreCase = true)
+            if (!isVerifiedMirror || isZipUrl(href)) return@forEach
 
             callback(
                 newExtractorLink("GDFlix", "GDFlix [$label] $quality", href, ExtractorLinkType.VIDEO) {
@@ -168,6 +185,7 @@ object Movies4uExtractor {
         val reurl = Regex("""var reurl\s*=\s*"([^"]+)"""").find(body)?.groupValues?.get(1) ?: return
         val raw = Regex("""[?&]link=(.+)$""").find(reurl)?.groupValues?.get(1)
         val finalUrl = raw?.let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) } ?: reurl
+        if (isZipUrl(finalUrl)) return
         callback(
             newExtractorLink("FastDL", "FastDL $quality", finalUrl, ExtractorLinkType.VIDEO) {
                 this.quality = getQualityFromName(quality)
