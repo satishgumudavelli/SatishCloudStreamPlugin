@@ -22,10 +22,10 @@
     },
     {
         "iconUrl": "https://movies4u.ag/favicon.ico",
-        "fileHash": "sha256-ff9d243862287dabc6e5b676bfeb41c9abd4aa044028adf1cf60745eb71fc144",
+        "fileHash": "sha256-1988dc6ba9d11f6fe316acae5e49303e2f20d3d0973af1842d51acbeab5a6508",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 27408,
+        "fileSize": 27417,
         "status": 1,
         "language": "hi",
         "authors": [
@@ -36,10 +36,10 @@
             "TvSeries"
         ],
         "version": 1,
-        "internalName": "Movies4u",
+        "internalName": "Movies4uAG",
         "description": "Movies4u - Bollywood, Hollywood, South Indian, Web Series & TV Shows",
-        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/Movies4u.cs3",
-        "name": "Movies4u"
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/Movies4uAG.cs3",
+        "name": "Movies4uAG"
     },
     {
         "iconUrl": "https://vidbox.vc/logo.png",
