@@ -1,0 +1,37 @@
+Movies4uAG/src/main/kotlin/com/movies4u/Movies4uExtractor.kt
+  s_fcc618935f0c20::t_55f22b65d79f0a 11
+  s_fcc618935f0c20::t_bc623662908cff 138
+  s_fcc618935f0c20::t_d5f9bec25c5baf 286
+  s_fcc618935f0c20::t_c6a3bd5727f364 269-285,287-308
+  s_fcc618935f0c20::t_f99f0654c80234 120-125
+Movies4uAG/src/main/kotlin/com/movies4u/Movies4uProvider.kt
+  s_fcc618935f0c20::t_ab9bfde3bfb2f8 19-26,28,38
+  s_fcc618935f0c20::t_051dbdc7f60f25 44-54
+  s_fcc618935f0c20::t_8151ba025cb592 56-65
+  s_fcc618935f0c20::t_2c3205d460bbea 85-89
+  s_fcc618935f0c20::t_c4e449d62fe9c6 69
+  s_fcc618935f0c20::t_e1e8de91ba564c 95
+  s_fcc618935f0c20::t_a8f62c21b83594 113
+  s_fcc618935f0c20::t_adf1ddfd8268fa 55
+Movies4uAG/src/main/kotlin/com/movies4u/DomainResolver.kt
+  s_fcc618935f0c20::t_a331fc3b9880c0 1-46
+domains.json
+  s_fcc618935f0c20::t_ca324c1d7abd33 8
+  s_fcc618935f0c20::t_fc9c235e4ca37c 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a28b6b8154e8760e4279067e0a24b437c2483469",
+  "prompts": {},
+  "sessions": {
+    "s_fcc618935f0c20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5005903a-2b03-487c-8550-0cd07e4df3b3",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
