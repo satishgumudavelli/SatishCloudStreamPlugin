@@ -7,6 +7,11 @@ import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 class Movies4uProviderPlugin : BasePlugin() {
     override fun load() {
         registerMainAPI(Movies4uProvider())
+        registerExtractorAPI(HubCloudExtractor())
+        registerExtractorAPI(GDFlixExtractor())
+        registerExtractorAPI(GDLink())
+        registerExtractorAPI(GDFlixNet())
+        registerExtractorAPI(GofileExtractor())
     }
 
     override fun beforeUnload() {
