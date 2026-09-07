@@ -5,6 +5,7 @@
     { "name": "cinemaos", "domain": "cinemaos.tech" },
     { "name": "cinemaos", "domain": "cinemaos.me" },
     { "name": "cinemaos", "domain": "cinemaos-v3.vercel.app" },
-    { "name": "cinemaos", "domain": "cinemaos.live" }
+    { "name": "cinemaos", "domain": "cinemaos.live" },
+    { "name": "movies4u", "domain": "movies4u.ag" }
   ]
 }

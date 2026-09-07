@@ -8,6 +8,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLDecoder
@@ -116,11 +117,12 @@ object Movies4uExtractor {
     // VegaCloud-branded clone (vcloud.fit) share the same "generate link" -> mirror-buttons
     // template, HubCDN and fastdl.zip both just wrap an already-final CDN url in a query/JS
     // param, GDFlix exposes a couple of already-resolved CDN mirrors as plain links (no captcha
-    // needed for those), and Gofile/PixelDrain are handled by cloudstream core's own built-in
-    // extractors. Any of these that turns out to be a "Complete Season" .zip gets expanded into
-    // its individual episodes via invokeZipEpisodes instead of being emitted as-is. Filepress/
-    // vegadrive/1fichier/vikingfile mirrors are skipped: their pages are JS-driven (React SPA) or
-    // were unreachable/expired when checked, so there's nothing verified to resolve them against.
+    // needed for those), Filepress/filebee's frontend is a JS-rendered SPA but its underlying
+    // /api/file/downlaod(2)/ REST endpoint works headlessly, and Gofile/PixelDrain are handled by
+    // cloudstream core's own built-in extractors. Any of these that turns out to be a "Complete
+    // Season" .zip gets expanded into its individual episodes via invokeZipEpisodes instead of
+    // being emitted as-is. vegadrive/1fichier/vikingfile mirrors are skipped: unreachable/expired
+    // when checked, so there's nothing verified to resolve them against.
     suspend fun resolve(
         href: String,
         quality: String,
@@ -133,6 +135,7 @@ object Movies4uExtractor {
             lower.contains("hubcdn.") -> invokeHubCdn(href, quality, callback)
             lower.contains("gdflix") -> invokeGdflix(href, quality, callback)
             lower.contains("fastdl.zip") -> invokeFastdl(href, quality, callback)
+            lower.contains("filepress") || lower.contains("filebee") -> invokeFilepress(href, quality, callback)
             lower.contains("gofile.io") || lower.contains("pixeldrain") ->
                 runCatching { loadExtractor(href, href, subtitleCallback, callback) }
             directExtensions.any { lower.substringBefore("?").endsWith(it) } ->
@@ -259,6 +262,46 @@ object Movies4uExtractor {
         }
         callback(
             newExtractorLink("FastDL", "FastDL $quality", finalUrl, ExtractorLinkType.VIDEO) {
+                this.quality = getQualityFromName(quality)
+            }
+        )
+    }
+
+    // Filepress/filebee's own page (`/file/<id>`) is a React SPA - nothing to scrape from its
+    // static HTML - but the site's REST API behind it doesn't care that the request isn't coming
+    // from that app: POST the id to /api/file/downlaod/ (their typo, not mine) for a one-time
+    // token, then POST that token to /api/file/downlaod2/ for the real stream url.
+    private fun postJson(url: String, body: JSONObject, referer: String): String? = runCatching {
+        (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Referer", referer)
+            connectTimeout = 15000
+            readTimeout = 20000
+            outputStream.use { it.write(body.toString().toByteArray()) }
+        }.inputStream.bufferedReader().use { it.readText() }
+    }.getOrNull()
+
+    private suspend fun invokeFilepress(url: String, quality: String, callback: (ExtractorLink) -> Unit) {
+        val parsed = runCatching { URL(url) }.getOrNull() ?: return
+        val origin = "${parsed.protocol}://${parsed.host}"
+        val id = parsed.path.trimEnd('/').substringAfterLast('/').takeIf { it.isNotBlank() } ?: return
+
+        fun request(id: String) = JSONObject().put("id", id).put("method", "indexDownlaod").put("captchaValue", JSONObject.NULL)
+
+        val token = postJson("$origin/api/file/downlaod/", request(id), origin)
+            ?.let { runCatching { JSONObject(it) }.getOrNull() }
+            ?.takeIf { it.optBoolean("status") }
+            ?.optString("data")?.takeIf { it.isNotBlank() } ?: return
+
+        val finalUrl = postJson("$origin/api/file/downlaod2/", request(token), origin)
+            ?.let { runCatching { JSONObject(it) }.getOrNull() }
+            ?.optJSONObject("data")?.optJSONArray("data")?.optString(0)?.takeIf { it.isNotBlank() } ?: return
+
+        if (isZipUrl(finalUrl)) return
+        callback(
+            newExtractorLink("Filepress", "Filepress $quality", finalUrl, ExtractorLinkType.VIDEO) {
                 this.quality = getQualityFromName(quality)
             }
         )

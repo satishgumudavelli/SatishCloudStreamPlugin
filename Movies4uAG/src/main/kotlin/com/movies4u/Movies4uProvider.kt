@@ -16,7 +16,16 @@ class Movies4uProvider : MainAPI() {
 
     override val mainPage = mainPageOf(*categories.toTypedArray())
 
+    // domains.json lives on `master` (fetched fresh every resolve, not baked into the .cs3) so a
+    // domain rotation can go live by editing this file alone, no plugin rebuild/republish needed.
+    private val domainResolver = DomainResolver(
+        domainsJsonUrl = "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/master/domains.json",
+        targetName = "movies4u",
+        fallbackDomain = mainUrl.removePrefix("https://"),
+    )
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        mainUrl = domainResolver.resolveMainUrl()
         val base = if (request.data.isEmpty()) mainUrl else "$mainUrl/category/${request.data}"
         val url = if (page == 1) "$base/" else "$base/page/$page/"
         val document = app.get(url).document
@@ -26,17 +35,38 @@ class Movies4uProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
+        mainUrl = domainResolver.resolveMainUrl()
         val document = app.get("$mainUrl/?s=${URLEncoder.encode(query, "UTF-8")}").document
         return document.select(".entry-card.card-content").mapNotNull { it.toSearchResponse() }
     }
 
     // A post's own category-xxx classes double as its TvType tag, same convention on the
-    // homepage/search article card and on the post's own content wrapper.
-    private fun Element.isWebSeries() = classNames().contains("category-web-series")
+    // homepage/search article card and on the post's own content wrapper. That tag alone misses
+    // real series posted under a different category (e.g. "Khatron Ke Khiladi" is tagged only
+    // category-tv-show, confirmed live) - when the caller has the post's info text on hand
+    // (only available on the detail page, not the listing card), also match it against the same
+    // "Season:"/"Episode:"/"SHOW Name:" phrases the reference implementation falls back to.
+    private val seriesTextSignal = Regex("""(?i)Season:|Episode:|SHOW Name:""")
+
+    private fun Element.isWebSeries(infoText: String? = null): Boolean {
+        if (classNames().contains("category-web-series")) return true
+        return infoText != null && seriesTextSignal.containsMatchIn(infoText)
+    }
+
+    // Truncating at the first quality/format marker (rather than removing markers everywhere
+    // and trimming only the ends) avoids leaving debris behind mid-title - e.g. "Mirzapur: The
+    // Movie (2026) HQ-HDTC [Hindi + Telugu] (ORG) 480p | 720p | 1080p" would leave a dangling
+    // "HQ- (ORG) | |" if tokens were stripped in place instead of just cutting the title short.
+    private val titleNoisePattern = Regex("""(?i)\[|\b\d+p\b|\b4k\b|HDTC|HDTS|HDRip|BluRay|WEB-DL|Full Movie""")
+
+    private fun cleanTitle(raw: String): String {
+        val cut = titleNoisePattern.find(raw)?.range?.first ?: return raw
+        return raw.substring(0, cut).trim(' ', '-', '|', ':').ifBlank { raw }
+    }
 
     private fun Element.toSearchResponse(): SearchResponse? {
         val titleEl = selectFirst("h2.entry-title a") ?: return null
-        val title = titleEl.text().trim()
+        val title = cleanTitle(titleEl.text().trim())
         val href = titleEl.attr("href")
         val poster = selectFirst("img")?.attr("src")
         return if (isWebSeries()) {
@@ -52,14 +82,17 @@ class Movies4uProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url).document
-        val title = document.selectFirst("meta[property=og:title]")?.attr("content")?.ifBlank { null }
-            ?: document.selectFirst("h1.entry-title")?.text()
-            ?: return null
+        val title = cleanTitle(
+            document.selectFirst("meta[property=og:title]")?.attr("content")?.ifBlank { null }
+                ?: document.selectFirst("h1.entry-title")?.text()
+                ?: return null
+        )
         val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
             ?: document.selectFirst(".entry-content img")?.attr("src")
         val plot = document.selectFirst(".entry-content p")?.text()?.trim()?.ifBlank { null }
         val year = Regex("""(19|20)\d{2}""").find(title)?.value?.toIntOrNull()
         val postEl = document.selectFirst(".post.type-post")
+        val infoText = document.selectFirst(".entry-content")?.text()
 
         // Quality -> mdrive.cloud page (h4 label followed by the link). The site inconsistently
         // wraps that link in a <p> or a <div class="downloads-btns-div"> from post to post, so
@@ -77,7 +110,7 @@ class Movies4uProvider : MainAPI() {
             ?: emptyList()
         if (qualityLinks.isEmpty()) return null
 
-        return if (postEl?.isWebSeries() == true) {
+        return if (postEl?.isWebSeries(infoText) == true) {
             // A series' mdrive page usually lists one "-:Episodes: N:-" heading + its mirror
             // links right after (heading tag h3/h4/h5, wrapper <p> or div.downloads-btns-div -
             // both vary per series, so match the heading by its text and take whatever its next
