@@ -1,5 +1,26 @@
 [
     {
+        "iconUrl": "https://www.cineapse.net/icon.png",
+        "fileHash": "sha256-dc016e6957da4de2628a34fb226e37080510b95ade23faae27a816512c12c769",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 27371,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "Satish Gumudavelli"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "CineapseProvider",
+        "description": "Cineapse - Movies & TV Shows streaming guide",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/CineapseProvider.cs3",
+        "name": "CineapseProvider"
+    },
+    {
         "iconUrl": "https://cinemaos.tech/favicon.ico",
         "fileHash": "sha256-c61f98f4d0240dc0cd4f9fc3b546cba4aa1d77e082551a2fcfabaf5df57a13cc",
         "apiVersion": 1,
