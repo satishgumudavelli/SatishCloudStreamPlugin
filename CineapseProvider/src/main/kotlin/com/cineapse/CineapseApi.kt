@@ -53,8 +53,10 @@ val homeRows = listOf(
     "discover/tv?with_genres=35&watch_region=US&sort_by=popularity.desc" to "TV Comedies",
 )
 
-// "Browse by Provider" - one row per streaming service, filtering the movie catalog by TMDB
-// watch-provider id. All 14 ids live-verified against
+// "Browse by Provider" - a Movies row and a Series row per streaming service (28 rows total),
+// mirroring the site's own per-provider Movies/Series toggle (confirmed live on
+// cineapse.net/provider/hulu: the Series tab fires discover/tv, not discover/movie). All 14
+// watch-provider ids live-verified against
 // GET /tmdb/discover/movie?with_watch_providers=<id>&watch_region=US (research.md Task 3).
 private const val watchRegion = "US"
 val providerRows = listOf(
@@ -72,7 +74,12 @@ val providerRows = listOf(
     34 to "MGM Plus",
     188 to "YouTube Premium",
     73 to "Tubi TV",
-).map { (id, name) -> "discover/movie?with_watch_providers=$id&watch_region=$watchRegion" to name }
+).flatMap { (id, name) ->
+    listOf(
+        "discover/movie?with_watch_providers=$id&watch_region=$watchRegion" to "$name Movies",
+        "discover/tv?with_watch_providers=$id&watch_region=$watchRegion" to "$name Series",
+    )
+}
 
 object CineapseApi {
 

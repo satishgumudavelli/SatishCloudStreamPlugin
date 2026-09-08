@@ -15,6 +15,7 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
+import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import org.json.JSONObject
@@ -152,18 +153,23 @@ class CineapseProvider : MainAPI() {
         }
     }
 
-    // Cineapse gates real video-source resolution behind a WASM proof-of-work challenge plus a
-    // CryptoJS-encrypted, session-scoped token and an obfuscated backend route (see
-    // specs/004-cineapse-provider/research.md Task 5). Reproducing that gate means
-    // reverse-engineering the WASM PoW algorithm and recovering an embedded crypto passphrase -
-    // out of scope for this feature per Constitution Principle II (verify or skip, never
-    // guess), so this honestly reports no source rather than emitting a fabricated/broken link.
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ): Boolean = false
+    ): Boolean {
+        val link = parseJson<CineapseLoadData>(data)
+        val id = link.id ?: return false
+        CineapseExtractor.invoke(
+            mediaType = if (link.season != null) "tv" else "movie",
+            tmdbId = id,
+            season = link.season,
+            episode = link.episode,
+            callback = callback,
+        )
+        return true
+    }
 
     data class CineapseLoadData(
         val id: Int? = null,
