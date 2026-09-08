@@ -1,0 +1,23 @@
+Movies4uAG/src/main/kotlin/com/movies4u/Movies4uProvider.kt
+  s_fcc618935f0c20::t_078d832af7c70c 12
+build.gradle.kts
+  s_fcc618935f0c20::t_398cc4368dbc7e 6-9,99-107
+settings.gradle.kts
+  s_fcc618935f0c20::t_baaec3e58626b6 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "497a37e87af6a72763caea82d0837c8fbc29d983",
+  "prompts": {},
+  "sessions": {
+    "s_fcc618935f0c20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5005903a-2b03-487c-8550-0cd07e4df3b3",
+        "model": "unknown"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
