@@ -1,0 +1,24 @@
+CineapseProvider/src/main/kotlin/com/cineapse/CineapseExtractor.kt
+  s_762dbbb3e793a7::t_ed60ee3085de15 1-117
+CineapseProvider/src/main/kotlin/com/cineapse/CineapseProvider.kt
+  s_762dbbb3e793a7::t_72c1b2bd1dc1f7 18
+  s_762dbbb3e793a7::t_e73ab498e52f3f 161-172
+CineapseProvider/src/main/kotlin/com/cineapse/CineapseApi.kt
+  s_762dbbb3e793a7::t_128df69e339e57 56-59,77-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "48051c8832376daf8114fd93b7759b3fa4d0b49d",
+  "prompts": {},
+  "sessions": {
+    "s_762dbbb3e793a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c02a1c9-ff62-41bf-8e1a-0754f98b1b25",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
