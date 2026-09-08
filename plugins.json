@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://cinemaos.tech/favicon.ico",
-        "fileHash": "sha256-fe37563fbe02450ba98b63b5dd7f6a275e92b78a7b4c41ff311e13e6fd3587d1",
+        "fileHash": "sha256-c61f98f4d0240dc0cd4f9fc3b546cba4aa1d77e082551a2fcfabaf5df57a13cc",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 47708,
+        "fileSize": 47824,
         "status": 1,
         "language": "en",
         "authors": [
@@ -22,10 +22,10 @@
     },
     {
         "iconUrl": "https://movies4u.ag/favicon.ico",
-        "fileHash": "sha256-2ecf4ced0adde670ef6c34393c608210ed8811b0e4df7fe31db856eb9b0e92b2",
+        "fileHash": "sha256-885ac25b40447ca43f10dcb0bdaab7ffcef5be0306739f57ae291e71692511dc",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 74102,
+        "fileSize": 74218,
         "status": 1,
         "language": "hi",
         "authors": [
@@ -43,10 +43,10 @@
     },
     {
         "iconUrl": "https://multishows.top/favicon/favicon-32x32.png",
-        "fileHash": "sha256-24277e8ca9d0c303cc21eb9bff93f91defccedeba6f72dd3eba28df36fdad672",
+        "fileHash": "sha256-a78aadeabddd1ffad00965f476b8c9a6101215e4f6080cfc9cb5391a7428e17b",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 21625,
+        "fileSize": 21677,
         "status": 1,
         "language": "en",
         "authors": [
@@ -64,10 +64,10 @@
     },
     {
         "iconUrl": "https://vidbox.vc/logo.png",
-        "fileHash": "sha256-c5aac1cde59c09bf4cccac9336ae389a5352541cdeffaf10611b079764e30032",
+        "fileHash": "sha256-094b74638a1f06c236c5760262260a4bd20000617e8fb907d08fa2ab7addb118",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 111992,
+        "fileSize": 112188,
         "status": 1,
         "language": "en",
         "authors": [
