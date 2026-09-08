@@ -9,7 +9,7 @@ import java.net.URLEncoder
 
 class Movies4uProvider : MainAPI() {
     override var mainUrl = "https://movies4u.ag"
-    override var name = "Movies4u"
+    override var name = "Movies4uAG"
     override val hasMainPage = true
     override val hasChromecastSupport = true
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
