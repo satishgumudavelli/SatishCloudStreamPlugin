@@ -1,0 +1,19 @@
+CineapseProvider/src/main/kotlin/com/cineapse/CineapseExtractor.kt
+  s_762dbbb3e793a7::t_6a8f297591bdea 63-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2d8000284ac55a6f29ebfdfad9f82be2fe24db24",
+  "prompts": {},
+  "sessions": {
+    "s_762dbbb3e793a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c02a1c9-ff62-41bf-8e1a-0754f98b1b25",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
