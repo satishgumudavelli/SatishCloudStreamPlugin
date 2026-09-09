@@ -60,11 +60,15 @@ object CineapseExtractor {
                     Regex("""https?://[^"'\s]+?\.m3u8(?:\?[^"'\s]*)?"""),
                     script = navigateScript,
                     useOkhttp = false,
-                    // The real flow turned out to be token -> "get sources" -> "claim" -> media
-                    // (research.md Task 5d), one more round-trip than assumed when this was
-                    // first written, plus the PoW solve itself - 45s leaves more headroom than
-                    // the original 30s for that full chain to complete on a real device.
-                    timeout = 45_000L,
+                    // The real flow is: solve a WASM PoW challenge (difficulty 21, ~1M+ nonce
+                    // tries observed - research.md Task 5g) -> token -> a hidden player iframe
+                    // that itself retries its own postMessage handshake for up to 20s before
+                    // giving up (Task 5h) -> "get sources" -> media. Both stages are confirmed
+                    // by real source (Task 5i) to run unmodified inside this same WebView, so
+                    // matching WebViewResolver's own upstream DEFAULT_TIMEOUT (60s) - rather than
+                    // an arbitrary shorter value - is the justified margin for that full chain on
+                    // a real (slower-than-desktop) device.
+                    timeout = 60_000L,
                 )
             )
         }.getOrNull() ?: return
