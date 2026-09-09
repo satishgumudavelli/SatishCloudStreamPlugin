@@ -18,6 +18,7 @@ import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 import org.json.JSONObject
 
 class CineapseProvider : MainAPI() {
@@ -161,14 +162,19 @@ class CineapseProvider : MainAPI() {
     ): Boolean {
         val link = parseJson<CineapseLoadData>(data)
         val id = link.id ?: return false
-        CineapseExtractor.invoke(
-            mediaType = if (link.season != null) "tv" else "movie",
-            tmdbId = id,
-            season = link.season,
-            episode = link.episode,
-            callback = callback,
-        )
-        return true
+        mainUrl = CineapseApi.resolveMainUrl()
+        val path = if (link.season != null) "tv/$id" else "movie/$id"
+        // season/episode ride along as query params purely so CineapseExtractor.getUrl (which
+        // only receives a single url+referer, per ExtractorApi's interface) can parse them back
+        // out - Cineapse's own stream page ignores these params itself (confirmed live), episode
+        // switching there only happens through the in-page UI, which CineapseExtractor drives
+        // separately once it has these values.
+        val url = buildString {
+            append("$mainUrl/stream/$path?fs=1")
+            if (link.season != null) append("&season=${link.season}")
+            if (link.episode != null) append("&episode=${link.episode}")
+        }
+        return loadExtractor(url, subtitleCallback, callback)
     }
 
     data class CineapseLoadData(

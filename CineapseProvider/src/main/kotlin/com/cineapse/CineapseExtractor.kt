@@ -1,7 +1,9 @@
 package com.cineapse
 
 import com.lagradost.api.Log
+import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.network.WebViewResolver
+import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
 
@@ -25,26 +27,40 @@ private const val TAG = "CineapseExtractor"
  * `svr_cinesrc`, `svr_saga`) were never individually tested, so only the one default-resolved
  * source is exposed here - exposing more is a follow-up, not something to guess at.
  *
- * Episodes, in contrast, are NOT addressable via URL query params (`?season=&episode=` is
- * silently ignored - confirmed live) - the player always opens on S1E1 and episode switching
- * happens only through the in-page Season/Episode UI. Switching episodes was confirmed live to
- * trigger a genuinely new token exchange and a genuinely distinct `.m3u8`, so a non-default
- * episode is reached by driving that same UI via [WebViewResolver]'s `script` hook rather than
- * guessing a URL scheme that doesn't exist.
+ * Episodes, in contrast, are NOT addressable via URL query params on Cineapse's *own* stream
+ * page (`?season=&episode=` there is silently ignored - confirmed live) - the player always
+ * opens on S1E1 and episode switching happens only through the in-page Season/Episode UI. This
+ * extractor's own `season`/`episode` query params (added by [CineapseProvider.loadLinks] to the
+ * URL handed to [loadExtractor]) are a different thing - just how this class's own two typed
+ * params travel through `ExtractorApi.getUrl(url, referer)`'s single-string interface, then get
+ * parsed back out below and used to drive that same in-page UI via [WebViewResolver]'s `script`
+ * hook rather than guessing a URL scheme Cineapse itself doesn't support.
  */
-object CineapseExtractor {
+class CineapseExtractor : ExtractorApi() {
+    override var name = "Cineapse"
+    override var mainUrl = "https://$cineapseFallbackDomain"
+    override val requiresReferer = false
 
-    suspend fun invoke(
-        mediaType: String,
-        tmdbId: Int,
-        season: Int?,
-        episode: Int?,
-        callback: (ExtractorLink) -> Unit,
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
     ) {
+        // Keep in sync with whatever domain CineapseApi actually resolved when building `url`
+        // (DomainResolver caches its result process-wide, so this converges immediately) -
+        // both for the headers below and so loadExtractor's mainUrl-prefix dispatch keeps
+        // matching future calls even if the resolved domain differs from the static fallback.
         val base = CineapseApi.resolveMainUrl()
-        val path = if (mediaType == "tv") "tv/$tmdbId" else "movie/$tmdbId"
-        val url = "$base/stream/$path?fs=1"
-        Log.i(TAG, "invoke: mediaType=$mediaType tmdbId=$tmdbId season=$season episode=$episode url=$url")
+        mainUrl = base
+
+        // season/episode travel as query params on `url` (added by CineapseProvider.loadLinks)
+        // since ExtractorApi.getUrl only carries a single url+referer, not the typed fields
+        // CineapseExtractor.invoke used to take directly.
+        val season = Regex("""[?&]season=(\d+)""").find(url)?.groupValues?.get(1)?.toIntOrNull()
+        val episode = Regex("""[?&]episode=(\d+)""").find(url)?.groupValues?.get(1)?.toIntOrNull()
+        val mediaType = if (season != null) "tv" else "movie"
+        Log.i(TAG, "getUrl: url=$url mediaType=$mediaType season=$season episode=$episode")
 
         // The player always opens on S1E1 by default - only script a navigation when a
         // different episode is actually requested, so the default case doesn't pay for an
@@ -125,7 +141,7 @@ object CineapseExtractor {
         // aren't lost the way CinemaOsExtractor's own comment warns a pure quality-split would.
         val links = runCatching {
             M3u8Helper.generateM3u8(
-                "Cineapse",
+                name,
                 mediaUrl,
                 referer = "$base/",
                 headers = mapOf("Referer" to "$base/", "Origin" to base),

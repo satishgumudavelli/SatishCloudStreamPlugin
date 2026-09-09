@@ -7,5 +7,6 @@ import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 class CineapseProviderPlugin : BasePlugin() {
     override fun load() {
         registerMainAPI(CineapseProvider())
+        registerExtractorAPI(CineapseExtractor())
     }
 }
