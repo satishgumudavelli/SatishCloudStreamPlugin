@@ -57,7 +57,16 @@ object CineapseExtractor {
             app.get(
                 url,
                 interceptor = WebViewResolver(
-                    Regex("""https?://[^"'\s]+?\.m3u8(?:\?[^"'\s]*)?"""),
+                    // Must NOT match any `/media/{opaque}` path - a live Playwright capture
+                    // (research.md Task 5j) proved individual HLS *segments* are served under
+                    // that exact same disguised shape (fake `.gif`/`.webp`/`.css`/`.jpg`/`.ico`
+                    // extensions - confirmed by fetching a real playlist body and seeing its own
+                    // #EXTINF segment URIs use them), and segment requests fire before the real
+                    // playlist in page load order. `.m3u8` (confirmed live, `content-type:
+                    // application/vnd.apple.mpegurl`) and `.txt` (research.md Task 5g's master
+                    // playlist) are the only extensions seen on an actual playlist across two
+                    // independent real sessions, so matching only those is what's safe.
+                    Regex("""https?://[^"'\s]+?\.(?:m3u8|txt)(?:\?[^"'\s]*)?"""),
                     script = navigateScript,
                     useOkhttp = false,
                     // The real flow is: solve a WASM PoW challenge (difficulty 21, ~1M+ nonce
@@ -74,7 +83,7 @@ object CineapseExtractor {
         }.getOrNull() ?: return
 
         val mediaUrl = mediaRes.url
-        if (!mediaUrl.contains(".m3u8", ignoreCase = true)) return
+        if (!Regex("""\.(?:m3u8|txt)(?:\?|$)""").containsMatchIn(mediaUrl)) return
 
         callback(
             newExtractorLink("Cineapse", "Cineapse", mediaUrl, ExtractorLinkType.M3U8) {
