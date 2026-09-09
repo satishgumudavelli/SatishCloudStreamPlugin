@@ -1,8 +1,11 @@
 package com.cineapse
 
+import com.lagradost.api.Log
 import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper
+
+private const val TAG = "CineapseExtractor"
 
 /**
  * Cineapse gates real playback behind a WASM proof-of-work challenge and an encrypted,
@@ -41,6 +44,7 @@ object CineapseExtractor {
         val base = CineapseApi.resolveMainUrl()
         val path = if (mediaType == "tv") "tv/$tmdbId" else "movie/$tmdbId"
         val url = "$base/stream/$path?fs=1"
+        Log.i(TAG, "invoke: mediaType=$mediaType tmdbId=$tmdbId season=$season episode=$episode url=$url")
 
         // The player always opens on S1E1 by default - only script a navigation when a
         // different episode is actually requested, so the default case doesn't pay for an
@@ -83,10 +87,22 @@ object CineapseExtractor {
         )
         val mediaRequest = runCatching {
             resolver.resolveUsingWebView(url).first
-        }.getOrNull() ?: return
+        }.onFailure {
+            Log.e(TAG, "resolveUsingWebView threw for $url: ${it.stackTraceToString()}")
+        }.getOrNull()
+        if (mediaRequest == null) {
+            // Either the regex never matched (WebView timed out somewhere in the PoW/token/
+            // iframe chain - research.md Task 5g/5h) or the call above threw (logged above).
+            Log.e(TAG, "resolveUsingWebView returned no matching request for $url")
+            return
+        }
 
         val mediaUrl = mediaRequest.url.toString()
-        if (!Regex("""\.(?:m3u8|txt)(?:\?|$)""").containsMatchIn(mediaUrl)) return
+        Log.i(TAG, "resolveUsingWebView matched: $mediaUrl")
+        if (!Regex("""\.(?:m3u8|txt)(?:\?|$)""").containsMatchIn(mediaUrl)) {
+            Log.e(TAG, "Matched URL failed the .m3u8/.txt extension check: $mediaUrl")
+            return
+        }
 
         // generateM3u8 fetches the body and validates it's a real Master/Media playlist via
         // HlsPlaylistParser before returning anything - a real check we didn't have before,
@@ -102,7 +118,19 @@ object CineapseExtractor {
                 referer = "$base/",
                 headers = mapOf("Referer" to "$base/", "Origin" to base),
             )
-        }.getOrNull() ?: return
+        }.onFailure {
+            Log.e(TAG, "generateM3u8 threw for $mediaUrl: ${it.stackTraceToString()}")
+        }.getOrNull()
+        if (links == null) {
+            Log.e(TAG, "generateM3u8 returned null for $mediaUrl")
+            return
+        }
+        Log.i(TAG, "generateM3u8 returned ${links.size} link(s) for $mediaUrl")
+        if (links.isEmpty()) {
+            // HlsPlaylistParser didn't recognize the body as a real Master/Media playlist -
+            // the matched URL wasn't actually HLS content (research.md Task 5j's residual risk).
+            Log.e(TAG, "generateM3u8 found no valid HLS content at $mediaUrl")
+        }
 
         links.forEach(callback)
     }
