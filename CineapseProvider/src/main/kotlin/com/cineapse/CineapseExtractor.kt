@@ -55,6 +55,17 @@ object CineapseExtractor {
             episodeNavigateScript(season, episode)
         } else null
 
+        // Real on-device capture (chrome://inspect, 2026-09-09) showed the retry after the
+        // /api/token 401 never fires at all on that device, unlike every desktop capture this
+        // session - meaning the site's own PoW-solving JS fails or hangs silently before it can
+        // retry. This wraps WebAssembly.instantiate/instantiateStreaming (the one thing pow.wasm
+        // actually needs) and listens for uncaught errors/rejections, reporting them back via
+        // scriptCallback so the real failure shows up in logcat directly - no chrome://inspect
+        // needed to see it next time. Always injected (unlike navigateScript above) since the
+        // failure happens before any episode-navigation would even matter, and idempotent-guarded
+        // since WebViewResolver re-evaluates `script` on every intercepted request.
+        val combinedScript = (navigateScript?.plus("\n") ?: "") + diagnosticScript
+
         // Called directly (per WebViewResolver's own doc comment: "When used as Interceptor
         // additionalUrls cannot be returned, use WebViewResolver(...).resolveUsingWebView(...)")
         // rather than via `app.get(url, interceptor = ...)` - that style makes OkHttp's
@@ -73,7 +84,8 @@ object CineapseExtractor {
             // playlist) are the only extensions seen on an actual playlist across two
             // independent real sessions, so matching only those is what's safe.
             Regex("""https?://[^"'\s]+?\.(?:m3u8|txt)(?:\?[^"'\s]*)?"""),
-            script = navigateScript,
+            script = combinedScript,
+            scriptCallback = makeDiagLogger(),
             useOkhttp = false,
             // The real flow is: solve a WASM PoW challenge (difficulty 21, ~1M+ nonce
             // tries observed - research.md Task 5g) -> token -> a hidden player iframe
@@ -133,6 +145,73 @@ object CineapseExtractor {
         }
 
         links.forEach(callback)
+    }
+
+    // Wraps WebAssembly instantiation and window-level error/rejection events, reporting any
+    // failure back via the script's own return value (read by scriptCallback below) - see the
+    // comment at the call site for why. Self-guarded with window.__cineapseDiag so re-running it
+    // on every intercepted request (WebViewResolver's normal behavior) doesn't re-wrap repeatedly.
+    private val diagnosticScript = """
+        (function() {
+            if (!window.__cineapseDiag) {
+                window.__cineapseDiag = { errors: [], instantiateCount: 0 };
+                try {
+                    if (typeof WebAssembly === 'undefined') {
+                        window.__cineapseDiag.errors.push('WebAssembly is undefined');
+                    } else {
+                        var origInstantiate = WebAssembly.instantiate;
+                        WebAssembly.instantiate = function() {
+                            window.__cineapseDiag.instantiateCount++;
+                            try {
+                                return origInstantiate.apply(this, arguments);
+                            } catch (e) {
+                                window.__cineapseDiag.errors.push('instantiate threw: ' + e.message);
+                                throw e;
+                            }
+                        };
+                        var origStreaming = WebAssembly.instantiateStreaming;
+                        if (origStreaming) {
+                            WebAssembly.instantiateStreaming = function() {
+                                window.__cineapseDiag.instantiateCount++;
+                                return origStreaming.apply(this, arguments).catch(function(e) {
+                                    window.__cineapseDiag.errors.push('instantiateStreaming rejected: ' + (e && e.message ? e.message : String(e)));
+                                    throw e;
+                                });
+                            };
+                        } else {
+                            window.__cineapseDiag.errors.push('instantiateStreaming is undefined');
+                        }
+                    }
+                } catch (e) {
+                    window.__cineapseDiag.errors.push('setup failed: ' + e.message);
+                }
+                window.addEventListener('unhandledrejection', function(ev) {
+                    try {
+                        var m = ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason);
+                        window.__cineapseDiag.errors.push('unhandledrejection: ' + m);
+                    } catch (e) {}
+                });
+                window.addEventListener('error', function(ev) {
+                    try { window.__cineapseDiag.errors.push('window.error: ' + ev.message); } catch (e) {}
+                });
+            }
+        })();
+        JSON.stringify(window.__cineapseDiag);
+    """.trimIndent()
+
+    // Only logs when the diagnostic state actually changed and has something worth seeing
+    // (dedupes the identical-empty-state result that comes back on nearly every intercepted
+    // request, since WebViewResolver re-evaluates `script` that often).
+    private fun makeDiagLogger(): (String) -> Unit {
+        var last: String? = null
+        return { result ->
+            if (result != last) {
+                last = result
+                if (!result.contains("\"errors\":[]") || !result.contains("\"instantiateCount\":0")) {
+                    Log.e(TAG, "diag: $result")
+                }
+            }
+        }
     }
 
     // Drives the player's own Season <select> and Episode-list UI (verified live: the native
