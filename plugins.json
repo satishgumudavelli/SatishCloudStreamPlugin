@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://www.cineapse.net/icon.png",
-        "fileHash": "sha256-fa1b0864d776a59f3b6887c250f5440a941248a38f30612adfa27e92a010334f",
+        "fileHash": "sha256-4e0e38c329e05f06a1d3877e4376ca9154fd024a22b2d8b6f0b6a4ef4b532b55",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 32429,
+        "fileSize": 32418,
         "status": 1,
         "language": "en",
         "authors": [
