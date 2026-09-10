@@ -15,6 +15,7 @@ import com.lagradost.cloudstream3.newMovieLoadResponse
 import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
+import com.lagradost.cloudstream3.runAllAsync
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
@@ -168,10 +169,27 @@ class PixelflixProvider : MainAPI() {
     ): Boolean {
         val link = parseJson<PixelflixLoadData>(data)
         val id = link.id ?: return false
-        // Pixelflix.cc's own /watch/{movie|tv}/{id} pages embed a third-party player (vidbolt.xyz,
-        // via an embed.reelsdownload.online wrapper) whose scrape API is directly callable
-        // (Postman-captured 2026-09-10) - no need to render pixelflix.cc's own watch page at all.
-        PixelflixExtractor.invoke(id, link.imdbId, isMovie = link.season == null, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
+        val isMovie = link.season == null
+        // Pixelflix.cc's own /watch/{movie|tv}/{id} pages embed a third-party player - either
+        // vidbolt.xyz or embed.reelsdownload.online's own native extract APIs, both real and
+        // independently observed (Postman-captured 2026-09-10) - so every source from both is
+        // queried directly here, same shape as CinemaOsProvider/VidboxProvider's loadLinks.
+        runAllAsync(
+            { PixelflixExtractor.invokeRedflix(id, isMovie, link.season, link.episode, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeCs3(isMovie, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeReelsdownloadCinemaos(id, link.imdbId, isMovie, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeMoviebox(id, link.imdbId, isMovie, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeFastVa(link.imdbId, id, isMovie, link.season, link.episode, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeQuasar(link.imdbId, id, isMovie, link.season, link.episode, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeSaffron(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeNova(link.imdbId, id, isMovie, link.season, link.episode, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeVidRock(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeCineStream(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeFlaxmovies(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeFSonic(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invoke4KHDHub(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+            { PixelflixExtractor.invokeNinetta(link.imdbId, id, isMovie, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
+        )
         return true
     }
 
