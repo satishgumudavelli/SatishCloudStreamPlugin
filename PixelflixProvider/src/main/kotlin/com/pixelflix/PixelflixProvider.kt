@@ -105,6 +105,7 @@ class PixelflixProvider : MainAPI() {
                                 episode = eps.optInt("episode_number"),
                                 title = title,
                                 year = year,
+                                imdbId = imdbId,
                             ).toJson()
                         ) {
                             this.name = eps.optString("name")
@@ -139,12 +140,13 @@ class PixelflixProvider : MainAPI() {
             val year = movie.optString("release_date").split("-").firstOrNull()?.toIntOrNull()
             val duration = movie.optInt("runtime", -1).takeIf { it > 0 }
             val cast = with(PixelflixApi) { movie.castNames() }
+            val imdbId = movie.optJSONObject("external_ids")?.optString("imdb_id")?.takeIf { it.isNotBlank() }
 
             newMovieLoadResponse(
                 title,
                 url,
                 TvType.Movie,
-                PixelflixLoadData(id = id, title = title, year = year).toJson(),
+                PixelflixLoadData(id = id, title = title, year = year, imdbId = imdbId).toJson(),
             ) {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = backdrop
@@ -166,10 +168,10 @@ class PixelflixProvider : MainAPI() {
     ): Boolean {
         val link = parseJson<PixelflixLoadData>(data)
         val id = link.id ?: return false
-        // Pixelflix.cc's own /watch/{movie|tv}/{id} pages embed a third-party player whose
-        // extraction API is directly callable (research.md Task 5, live-verified 2026-09-10) -
-        // no need to render pixelflix.cc's own watch page at all.
-        PixelflixExtractor.invoke(id, isMovie = link.season == null, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
+        // Pixelflix.cc's own /watch/{movie|tv}/{id} pages embed a third-party player (vidbolt.xyz,
+        // via an embed.reelsdownload.online wrapper) whose scrape API is directly callable
+        // (Postman-captured 2026-09-10) - no need to render pixelflix.cc's own watch page at all.
+        PixelflixExtractor.invoke(id, link.imdbId, isMovie = link.season == null, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
         return true
     }
 
@@ -179,5 +181,6 @@ class PixelflixProvider : MainAPI() {
         val episode: Int? = null,
         val title: String? = null,
         val year: Int? = null,
+        val imdbId: String? = null,
     )
 }

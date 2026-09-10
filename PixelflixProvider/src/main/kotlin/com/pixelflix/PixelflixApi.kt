@@ -80,11 +80,12 @@ object PixelflixApi {
     suspend fun searchMulti(query: String): ListPage =
         fetchList("search/multi", 1, "&query=${java.net.URLEncoder.encode(query, "UTF-8")}")
 
-    // append_to_response=credits: pixelflix.cc's own detail pages show a cast list (spec.md
-    // FR-004/FR-005) which TMDB's base movie/tv response doesn't include.
+    // append_to_response=external_ids,credits: cast list (spec.md FR-004/FR-005) and the imdb id
+    // PixelflixExtractor needs for every vidbolt.xyz scrape call - TMDB's base movie response has
+    // neither.
     suspend fun movieDetail(id: Int): JSONObject? =
         runCatching {
-            JSONObject(app.get("$tmdbApi/movie/$id?api_key=$tmdbKey&append_to_response=credits", headers = tmdbHeaders).text)
+            JSONObject(app.get("$tmdbApi/movie/$id?api_key=$tmdbKey&append_to_response=external_ids,credits", headers = tmdbHeaders).text)
         }.getOrNull()
 
     // append_to_response=external_ids,credits: TV's base response has neither imdb_id nor cast.
