@@ -103,6 +103,8 @@ class PixelflixProvider : MainAPI() {
                                 id = id,
                                 season = seasonNumber,
                                 episode = eps.optInt("episode_number"),
+                                title = title,
+                                year = year,
                             ).toJson()
                         ) {
                             this.name = eps.optString("name")
@@ -142,7 +144,7 @@ class PixelflixProvider : MainAPI() {
                 title,
                 url,
                 TvType.Movie,
-                PixelflixLoadData(id = id).toJson(),
+                PixelflixLoadData(id = id, title = title, year = year).toJson(),
             ) {
                 this.posterUrl = poster
                 this.backgroundPosterUrl = backdrop
@@ -167,7 +169,7 @@ class PixelflixProvider : MainAPI() {
         // Pixelflix.cc's own /watch/{movie|tv}/{id} pages embed a third-party player whose
         // extraction API is directly callable (research.md Task 5, live-verified 2026-09-10) -
         // no need to render pixelflix.cc's own watch page at all.
-        PixelflixExtractor.invoke(id, isMovie = link.season == null, link.season, link.episode, subtitleCallback, callback)
+        PixelflixExtractor.invoke(id, isMovie = link.season == null, link.season, link.episode, link.title, link.year, subtitleCallback, callback)
         return true
     }
 
@@ -175,5 +177,7 @@ class PixelflixProvider : MainAPI() {
         val id: Int? = null,
         val season: Int? = null,
         val episode: Int? = null,
+        val title: String? = null,
+        val year: Int? = null,
     )
 }
