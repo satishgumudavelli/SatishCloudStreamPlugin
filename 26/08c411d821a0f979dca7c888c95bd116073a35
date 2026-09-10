@@ -1,0 +1,24 @@
+PixelflixProvider/src/main/kotlin/com/pixelflix/PixelflixExtractor.kt
+  s_6762dd2032a365::t_972c50312b534a 200
+  s_6762dd2032a365::t_0f4be557eaff3a 164
+  s_6762dd2032a365::t_3bf7da173f541a 21-31,57-109
+  s_6762dd2032a365::t_b93fd0b942c115 129-133
+  s_6762dd2032a365::t_870df4e0c65683 9,11
+  s_6762dd2032a365::t_fcaa5a95f6148d 32-40,43,45,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2608c411d821a0f979dca7c888c95bd116073a35",
+  "prompts": {},
+  "sessions": {
+    "s_6762dd2032a365": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41c9a87b-90fd-41e8-ac21-3e95e1665ad7",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
