@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://www.cineapse.net/icon.png",
-        "fileHash": "sha256-8376eced9039a9be651c9379c6fb65fe9d7678c5070ceb30ac4336ec2ff66208",
+        "fileHash": "sha256-31ceab01876cedbdc39d8281609f9c95eb2ed7c68f7e7a060ea84e1e2a755e17",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 35405,
+        "fileSize": 35429,
         "status": 1,
         "language": "en",
         "authors": [
@@ -85,10 +85,10 @@
     },
     {
         "iconUrl": "https://pixelflix.cc/favicon.ico",
-        "fileHash": "sha256-9a363cbf53e54756f333e8b77fdf721f0e47c9a3f87f3a7ffdebf6220cebc774",
+        "fileHash": "sha256-b2d96f5f4635dfc9409ea9ef2f4bcc345f38b3cc8e21ac1000774838ff257452",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 41713,
+        "fileSize": 44922,
         "status": 1,
         "language": "en",
         "authors": [
