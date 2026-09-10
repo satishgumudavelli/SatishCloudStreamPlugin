@@ -133,6 +133,52 @@ object PixelflixExtractor {
         }
     }
 
+    // cinemaos-extract's real schema (user-supplied live NDJSON body, 2026-09-10): one JSON object
+    // per line, {"source": {id, scraperId, scraperName, label, quality, type, url, mirrors,
+    // verified, latencyMs, tracks: [{label, lang, url}]}}, ending with a final {"done","found"}
+    // line that has no "source" key (skipped). Replaces emitFromText's regex scan now that a real
+    // body confirmed the shape - per feedback_verify_extractor_response_before_coding.
+    private suspend fun emitFromCinemaosJson(
+        provider: String,
+        body: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) {
+        body.lineSequence().forEach { line ->
+            if (line.isBlank()) return@forEach
+            val source = runCatching { JSONObject(line) }.getOrNull()?.optJSONObject("source") ?: return@forEach
+            // ponytail: skip unverified mirrors - most quality dupes for a given label are unverified
+            // and slow (latencyMs near the 6000ms timeout ceiling), verified ones cover the same labels.
+            if (!source.optBoolean("verified", true)) return@forEach
+            val rawUrl = source.optString("url").takeIf { it.isNotBlank() } ?: return@forEach
+            val streamUrl = if (rawUrl.startsWith("/")) "$reelsdownloadOrigin$rawUrl" else rawUrl
+            val scraperName = source.optString("scraperName").ifBlank { source.optString("scraperId") }
+            val label = source.optString("label").takeIf { it.isNotBlank() }
+            val name = listOfNotNull(scraperName.takeIf { it.isNotBlank() }, label).joinToString(" - ").ifBlank { provider }
+            val type = when (source.optString("type").lowercase()) {
+                "dash", "mpd" -> ExtractorLinkType.DASH
+                "hls", "m3u8" -> ExtractorLinkType.M3U8
+                else -> ExtractorLinkType.VIDEO
+            }
+            val link = runCatching {
+                newExtractorLink(provider, name, streamUrl, type) {
+                    this.quality = getQualityFromName(source.optString("quality"))
+                }
+            }.getOrNull()
+            if (link != null) callback(link)
+
+            source.optJSONArray("tracks")?.let { tracks ->
+                for (i in 0 until tracks.length()) {
+                    val track = tracks.optJSONObject(i) ?: continue
+                    val rawSubUrl = track.optString("url").takeIf { it.isNotBlank() } ?: continue
+                    val subUrl = if (rawSubUrl.startsWith("/")) "$reelsdownloadOrigin$rawSubUrl" else rawSubUrl
+                    val subLabel = track.optString("label").ifBlank { track.optString("lang") }.ifBlank { provider }
+                    subtitleCallback(SubtitleFile(subLabel, subUrl))
+                }
+            }
+        }
+    }
+
     // Shared plumbing every vidbolt.xyz invokeXxx below calls into - the only part that isn't
     // provider-specific. tv path/season/episode params are untested (the capture only covers a
     // movie) - ponytail: mirror the movie shape 1:1 until a TV capture confirms the real query names.
@@ -214,12 +260,13 @@ object PixelflixExtractor {
         query: String,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
+        emit: suspend (String, String, (SubtitleFile) -> Unit, (ExtractorLink) -> Unit) -> Unit = ::emitFromText,
     ) {
         val body = runCatching { app.get("$reelsdownloadBase/$path?$query").text }.getOrElse {
             Log.e(TAG, "$provider failed: ${it.message}")
             return
         }
-        emitFromText(provider, body, subtitleCallback, callback)
+        emit(provider, body, subtitleCallback, callback)
     }
 
     // ?type=movie|tv&tmdb_id={id} - season/episode for tv is unverified (capture only covers a movie).
@@ -239,7 +286,7 @@ object PixelflixExtractor {
     suspend fun invokeReelsdownloadCinemaos(tmdbId: Int, imdbId: String?, isMovie: Boolean, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
         if (imdbId.isNullOrBlank()) return
         val type = if (isMovie) "movie" else "tv"
-        reelsdownloadExtract("Cinemaos", "cinemaos-extract", "type=$type&tmdb_id=$tmdbId&imdb_id=$imdbId${titleYear(title, year)}", subtitleCallback, callback)
+        reelsdownloadExtract("Cinemaos", "cinemaos-extract", "type=$type&tmdb_id=$tmdbId&imdb_id=$imdbId${titleYear(title, year)}", subtitleCallback, callback, ::emitFromCinemaosJson)
     }
 
     // ?type=movie|tv&tmdb_id={id}&imdb_id={imdbId}&title=...&year=... - path has no "-extract" suffix.
