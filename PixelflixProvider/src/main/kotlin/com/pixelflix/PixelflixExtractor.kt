@@ -12,37 +12,56 @@ import java.net.URLEncoder
 
 private const val TAG = "PixelflixExtractor"
 
-// Real call chain, live-captured via Postman/DevTools 2026-09-10 (user-supplied
-// Pixelflix.postman_collection.json) - replaces the earlier embed.reelsdownload.online/api/*-extract
-// guess, which is no longer what the site actually calls. pixelflix.cc's watch page embeds
-// embed.reelsdownload.online/player/{tmdbId}, which itself loads the real player at vidbolt.xyz.
-// vidbolt.xyz's frontend fans a single title out to ~9 independent scraper backends through its own
-// same-origin passthrough (/api/proxy or /api/scraper, both just forward "path" server-side, adding
-// whatever auth the backend needs so the browser never sees an API key) at
-// /scrape/{Provider}/{movie|tv}/{imdbId}?tmdbId=...&title=...&year=... - every provider needs the
-// imdb id as a path segment even when it's not repeated in the query.
-// No response body was captured (Postman only saved the requests), so the exact JSON shape of a
-// scrape response is unknown. What IS known from the captured follow-up requests: the m3u8 links
-// vidbolt.xyz actually fetches are already fully self-contained CDN-proxy URLs
-// (scraper.vidbolt.xyz/proxy/m3u8/{base64 origin url}?headers={referer/origin/UA as JSON} or
-// wormhole.filmu.in/proxy/m3u8?url=...&headers=...) - so rather than guess field names, every
-// provider's raw response text is scanned for m3u8 URLs directly. That works regardless of the
-// envelope shape and needs no extra Referer/Origin from us, since it's already baked into the
-// matched URL's own query string.
+// Two independent embed backends observed live for the same pixelflix.cc watch page (captured on
+// separate loads, 2026-09-10): embed.reelsdownload.online/player/{tmdbId} sometimes redirects to
+// vidbolt.xyz (which then fans out to the ~10 scrapers below this comment), and sometimes serves
+// its own native extract APIs directly (redflix-extract/cs3-extract/cinemaos-extract/moviebox,
+// further down) without ever touching vidbolt.xyz. Since either can show up, both are queried.
+// No response body was captured for any of these (Postman only saved the requests), so none of the
+// JSON shapes are known - every provider's raw response text is scanned for media/subtitle URLs
+// directly instead of guessing field names. That works regardless of the envelope shape, and for
+// the vidbolt.xyz scrapers specifically the matched URLs are already fully self-contained CDN-proxy
+// links (e.g. scraper.vidbolt.xyz/proxy/m3u8/{base64 origin url}?headers={referer/origin/UA as
+// JSON}) with any Referer/Origin baked into their own query string, so no extra headers are needed
+// fetching them here.
 object PixelflixExtractor {
 
     private const val vidboltBase = "https://vidbolt.xyz/api"
+    private const val reelsdownloadBase = "https://embed.reelsdownload.online/api"
 
-    private val m3u8Regex = Regex("""https?://[^\s"'\\]+?\.m3u8[^\s"'\\]*""")
+    private val mediaRegex = Regex("""https?://[^\s"'\\]+?\.(?:m3u8|mpd|mp4|mkv|webm)[^\s"'\\]*""", RegexOption.IGNORE_CASE)
+    private val subtitleRegex = Regex("""https?://[^\s"'\\]+?\.(?:vtt|srt)[^\s"'\\]*""", RegexOption.IGNORE_CASE)
 
-    private suspend fun directM3u8Link(source: String, streamUrl: String): ExtractorLink =
-        newExtractorLink(source, source, streamUrl, ExtractorLinkType.M3U8) {
-            this.quality = Qualities.Unknown.value
+    private fun linkTypeFor(url: String) = when {
+        url.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
+        url.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
+        else -> ExtractorLinkType.VIDEO
+    }
+
+    // Scans a scrape response's raw text for playable/subtitle URLs and emits them - the one bit
+    // shared by every provider below, vidbolt.xyz or reelsdownload.online alike.
+    private suspend fun emitFromText(
+        provider: String,
+        body: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) {
+        mediaRegex.findAll(body).map { it.value }.distinct().forEach { streamUrl ->
+            val link = runCatching {
+                newExtractorLink(provider, provider, streamUrl, linkTypeFor(streamUrl)) {
+                    this.quality = Qualities.Unknown.value
+                }
+            }.getOrNull() ?: return@forEach
+            callback(link)
         }
+        subtitleRegex.findAll(body).map { it.value }.distinct().forEach { subUrl ->
+            subtitleCallback(SubtitleFile(provider, subUrl))
+        }
+    }
 
-    // Shared plumbing every invokeXxx below calls into - the only part that isn't provider-specific.
-    // tv path/season/episode params are untested (the capture only covers a movie) - ponytail: mirror
-    // the movie shape 1:1 until a TV capture confirms the real query names.
+    // Shared plumbing every vidbolt.xyz invokeXxx below calls into - the only part that isn't
+    // provider-specific. tv path/season/episode params are untested (the capture only covers a
+    // movie) - ponytail: mirror the movie shape 1:1 until a TV capture confirms the real query names.
     private suspend fun scrapeProvider(
         provider: String,
         imdbId: String,
@@ -51,6 +70,7 @@ object PixelflixExtractor {
         episode: Int?,
         query: String,
         viaScraperEndpoint: Boolean = false,
+        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ) {
         val type = if (isMovie) "movie" else "tv"
@@ -63,9 +83,7 @@ object PixelflixExtractor {
             Log.e(TAG, "$provider scrape failed for imdb_id=$imdbId: ${it.message}")
             return
         }
-        m3u8Regex.findAll(body).map { it.value }.distinct().forEach { streamUrl ->
-            runCatching { directM3u8Link(provider, streamUrl) }.getOrNull()?.let(callback)
-        }
+        emitFromText(provider, body, subtitleCallback, callback)
     }
 
     private fun titleYear(title: String?, year: Int?) = buildString {
@@ -73,38 +91,83 @@ object PixelflixExtractor {
         year?.let { append("&year=").append(it) }
     }
 
-    suspend fun invokeFastVa(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("FastVa", imdbId, isMovie, season, episode, "tmdbId=$tmdbId&imdbId=$imdbId", viaScraperEndpoint = true, callback = callback)
+    suspend fun invokeFastVa(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("FastVa", imdbId, isMovie, season, episode, "tmdbId=$tmdbId&imdbId=$imdbId", viaScraperEndpoint = true, subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeQuasar(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("Quasar", imdbId, isMovie, season, episode, "tmdbId=$tmdbId", viaScraperEndpoint = true, callback = callback)
+    suspend fun invokeQuasar(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("Quasar", imdbId, isMovie, season, episode, "tmdbId=$tmdbId", viaScraperEndpoint = true, subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeSaffron(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("Saffron", imdbId, isMovie, season, episode, "tmdbId=$tmdbId&imdbId=$imdbId${titleYear(title, year)}", viaScraperEndpoint = true, callback = callback)
+    suspend fun invokeSaffron(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("Saffron", imdbId, isMovie, season, episode, "tmdbId=$tmdbId&imdbId=$imdbId${titleYear(title, year)}", viaScraperEndpoint = true, subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeNova(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("Nova", imdbId, isMovie, season, episode, "tmdbId=$tmdbId", viaScraperEndpoint = true, callback = callback)
+    suspend fun invokeNova(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("Nova", imdbId, isMovie, season, episode, "tmdbId=$tmdbId", viaScraperEndpoint = true, subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeVidRock(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("VidRock", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", callback = callback)
+    suspend fun invokeVidRock(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("VidRock", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeCineStream(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("CineStream", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", callback = callback)
+    suspend fun invokeCineStream(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("CineStream", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeFlaxmovies(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("Flaxmovies", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", callback = callback)
+    suspend fun invokeFlaxmovies(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("Flaxmovies", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeFSonic(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("FSonic", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", callback = callback)
+    suspend fun invokeFSonic(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("FSonic", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invoke4KHDHub(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("4KHDHub", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", callback = callback)
+    suspend fun invoke4KHDHub(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("4KHDHub", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", subtitleCallback = subtitleCallback, callback = callback)
 
-    // 10th provider, added from a second capture (Pixel server 2.postman_collection.json) -
-    // resolved a raw movie.streamrip.fun m3u8 with no referer/auth needed, already covered by the
-    // regex scan in scrapeProvider with no extra handling.
-    suspend fun invokeNinetta(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, callback: (ExtractorLink) -> Unit) =
-        scrapeProvider("Ninetta", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", viaScraperEndpoint = true, callback = callback)
+    // Added from a second capture (Pixel server 2.postman_collection.json) - resolved a raw
+    // movie.streamrip.fun m3u8 with no referer/auth needed, already covered by emitFromText.
+    suspend fun invokeNinetta(imdbId: String, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
+        scrapeProvider("Ninetta", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", viaScraperEndpoint = true, subtitleCallback = subtitleCallback, callback = callback)
+
+    // -------------------------------------------------------------------------------------------
+    // embed.reelsdownload.online's OWN native extract APIs - a second, independent embed backend
+    // (see the header comment). Captured live with real, working query shapes (Pixel Server
+    // 1.postman_collection.json, 2026-09-10) - unlike the vidbolt.xyz scrapers above, these four
+    // are NOT interchangeable: each backend was called with a different, specific param set, not
+    // every param sent to every backend (cs3-extract in particular gets no tmdb_id at all).
+    // -------------------------------------------------------------------------------------------
+    private suspend fun reelsdownloadExtract(
+        provider: String,
+        path: String,
+        query: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) {
+        val body = runCatching { app.get("$reelsdownloadBase/$path?$query").text }.getOrElse {
+            Log.e(TAG, "$provider failed: ${it.message}")
+            return
+        }
+        emitFromText(provider, body, subtitleCallback, callback)
+    }
+
+    // ?type=movie|tv&tmdb_id={id} - season/episode for tv is unverified (capture only covers a movie).
+    suspend fun invokeRedflix(tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
+        val type = if (isMovie) "movie" else "tv"
+        val query = "type=$type&tmdb_id=$tmdbId" + (if (!isMovie) "&season=${season ?: 1}&episode=${episode ?: 1}" else "")
+        reelsdownloadExtract("Redflix", "redflix-extract", query, subtitleCallback, callback)
+    }
+
+    // ?type=movie|tv&title=...&year=... - captured with no tmdb_id/imdb_id at all, unlike the other three.
+    suspend fun invokeCs3(isMovie: Boolean, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
+        val type = if (isMovie) "movie" else "tv"
+        reelsdownloadExtract("CS3", "cs3-extract", "type=$type${titleYear(title, year)}", subtitleCallback, callback)
+    }
+
+    // ?type=movie|tv&tmdb_id={id}&imdb_id={imdbId}&title=...&year=...
+    suspend fun invokeReelsdownloadCinemaos(tmdbId: Int, imdbId: String, isMovie: Boolean, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
+        val type = if (isMovie) "movie" else "tv"
+        reelsdownloadExtract("Cinemaos", "cinemaos-extract", "type=$type&tmdb_id=$tmdbId&imdb_id=$imdbId${titleYear(title, year)}", subtitleCallback, callback)
+    }
+
+    // ?type=movie|tv&tmdb_id={id}&imdb_id={imdbId}&title=...&year=... - path has no "-extract" suffix.
+    suspend fun invokeMoviebox(tmdbId: Int, imdbId: String, isMovie: Boolean, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
+        val type = if (isMovie) "movie" else "tv"
+        reelsdownloadExtract("Moviebox", "moviebox", "type=$type&tmdb_id=$tmdbId&imdb_id=$imdbId${titleYear(title, year)}", subtitleCallback, callback)
+    }
 
     suspend fun invoke(
         tmdbId: Int,
@@ -117,21 +180,28 @@ object PixelflixExtractor {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ) {
-        if (imdbId.isNullOrBlank()) {
-            Log.i(TAG, "No imdb id for tmdb_id=$tmdbId - every vidbolt.xyz provider keys off it, skipping")
-            return
+        val sources = mutableListOf<suspend () -> Unit>(
+            { invokeRedflix(tmdbId, isMovie, season, episode, subtitleCallback, callback) },
+            { invokeCs3(isMovie, title, year, subtitleCallback, callback) },
+        )
+        // These four need an imdb id (vidbolt.xyz's providers as a path segment, reelsdownload's
+        // cinemaos/moviebox as a query param) - redflix/cs3 above don't, so they still run without one.
+        if (!imdbId.isNullOrBlank()) {
+            sources += { invokeReelsdownloadCinemaos(tmdbId, imdbId, isMovie, title, year, subtitleCallback, callback) }
+            sources += { invokeMoviebox(tmdbId, imdbId, isMovie, title, year, subtitleCallback, callback) }
+            sources += { invokeFastVa(imdbId, tmdbId, isMovie, season, episode, subtitleCallback, callback) }
+            sources += { invokeQuasar(imdbId, tmdbId, isMovie, season, episode, subtitleCallback, callback) }
+            sources += { invokeSaffron(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+            sources += { invokeNova(imdbId, tmdbId, isMovie, season, episode, subtitleCallback, callback) }
+            sources += { invokeVidRock(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+            sources += { invokeCineStream(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+            sources += { invokeFlaxmovies(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+            sources += { invokeFSonic(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+            sources += { invoke4KHDHub(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+            sources += { invokeNinetta(imdbId, tmdbId, isMovie, season, episode, title, year, subtitleCallback, callback) }
+        } else {
+            Log.i(TAG, "No imdb id for tmdb_id=$tmdbId - skipping the vidbolt.xyz/cinemaos/moviebox sources that require it")
         }
-        listOf<suspend () -> Unit>(
-            { invokeFastVa(imdbId, tmdbId, isMovie, season, episode, callback) },
-            { invokeQuasar(imdbId, tmdbId, isMovie, season, episode, callback) },
-            { invokeSaffron(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-            { invokeNova(imdbId, tmdbId, isMovie, season, episode, callback) },
-            { invokeVidRock(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-            { invokeCineStream(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-            { invokeFlaxmovies(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-            { invokeFSonic(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-            { invoke4KHDHub(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-            { invokeNinetta(imdbId, tmdbId, isMovie, season, episode, title, year, callback) },
-        ).amap { it() }
+        sources.amap { it() }
     }
 }
