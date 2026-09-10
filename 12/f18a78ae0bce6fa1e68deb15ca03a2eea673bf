@@ -1,0 +1,27 @@
+PixelflixProvider/src/main/kotlin/com/pixelflix/PixelflixProvider.kt
+  s_d4fd9989d8f958::t_380e45b5c64a84 147
+  s_d4fd9989d8f958::t_a16467b4ad36de 172,180-181
+  s_d4fd9989d8f958::t_1279ff8f0a8920 106-107
+PixelflixProvider/src/main/kotlin/com/pixelflix/PixelflixExtractor.kt
+  s_d4fd9989d8f958::t_689ec29fd4ea1e 5,12,19-27,30-38,77-78,82-83,85,87-94,97-104,106-110,112-123
+  s_d4fd9989d8f958::t_f42ab1514d87e9 41
+  s_d4fd9989d8f958::t_304f252eda5e8c 84
+  s_d4fd9989d8f958::t_9c5ae6853d095a 39-40,42-46
+  s_d4fd9989d8f958::t_50260efdc12362 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "12f18a78ae0bce6fa1e68deb15ca03a2eea673bf",
+  "prompts": {},
+  "sessions": {
+    "s_d4fd9989d8f958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34767dff-2ed6-423c-8430-e32e479948d7",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
