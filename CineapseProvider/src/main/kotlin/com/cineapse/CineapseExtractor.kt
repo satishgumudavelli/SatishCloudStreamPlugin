@@ -145,6 +145,12 @@ class CineapseExtractor : ExtractorApi() {
                 mediaUrl,
                 referer = "$base/",
                 headers = mapOf("Referer" to "$base/", "Origin" to base),
+                // "FuckingInsane" is the real backend server codename behind this one default
+                // source - live-captured in the site's own /assets/v3/heartbeat body
+                // ({"provider":"FuckingInsane"}) on every request of a full session, never
+                // switched. Passed as generateM3u8's separate display `name`, not `source`
+                // (which stays this extractor's own "Cineapse" identity).
+                name = "FuckingInsane",
             )
         }.onFailure {
             Log.e(TAG, "generateM3u8 threw for $mediaUrl: ${it.stackTraceToString()}")
