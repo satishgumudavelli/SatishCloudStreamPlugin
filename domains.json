@@ -8,6 +8,7 @@
     { "name": "cinemaos", "domain": "cinemaos.live" },
     { "name": "movies4u", "domain": "movies4u.ag" },
     { "name": "multishows", "domain": "multishows.top" },
-    { "name": "cineapse", "domain": "cineapse.net" }
+    { "name": "cineapse", "domain": "cineapse.net" },
+    { "name": "pixelflix", "domain": "pixelflix.cc" }
   ]
 }
