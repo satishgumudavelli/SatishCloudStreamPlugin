@@ -6,7 +6,9 @@ import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.Qualities
+import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import org.json.JSONObject
 import java.net.URLEncoder
 
 private const val TAG = "PixelflixExtractor"
@@ -16,20 +18,35 @@ private const val TAG = "PixelflixExtractor"
 // vidbolt.xyz (which then fans out to the ~10 scrapers below this comment), and sometimes serves
 // its own native extract APIs directly (redflix-extract/cs3-extract/cinemaos-extract/moviebox,
 // further down) without ever touching vidbolt.xyz. Since either can show up, both are queried.
-// No response body was captured for any of these (Postman only saved the requests), so none of the
-// JSON shapes are known - every provider's raw response text is scanned for media/subtitle URLs
-// directly instead of guessing field names. That works regardless of the envelope shape, and for
-// the vidbolt.xyz scrapers specifically the matched URLs are already fully self-contained CDN-proxy
-// links (e.g. scraper.vidbolt.xyz/proxy/m3u8/{base64 origin url}?headers={referer/origin/UA as
-// JSON}) with any Referer/Origin baked into their own query string, so no extra headers are needed
-// fetching them here.
+//
+// The vidbolt.xyz scrapers' real JSON shape (user-supplied live response bodies, 2026-09-10) is
+// {"name","sources":[{"name","url","quality","type","language","headers",...}],"subtitles":
+// [{"url","label","lang"}]} - parsed directly below. Some "url"s are already fully wrapped in
+// scraper.vidbolt.xyz's own CDN proxy with Referer/Origin/UA baked into that URL's own query
+// string (e.g. scraper.vidbolt.xyz/proxy/m3u8/{base64 origin url}?headers=...); others (e.g.
+// VidRock's raw dream.flamingo-e55.workers.dev link) are the unwrapped origin - vidbolt.xyz's own
+// browser JS re-wraps only those through a CORS proxy because *browsers* enforce CORS, which
+// OkHttp doesn't, so the JSON's own "headers" object is passed straight through as this
+// ExtractorLink's headers either way and works for both cases without us needing to tell them apart.
+//
+// embed.reelsdownload.online's cinemaos-extract (a live response body was captured 2026-09-10) turns
+// out to be a NDJSON stream of {"source": {id, scraperId, scraperName, label, quality, type, url,
+// mirrors, verified, tracks: [{label, lang, url}]}} lines, one per scraper result, ending
+// {"done":true,"found":true} - the scraperIds (va/vf/z2/s7/q4/mb2...) match this same repo's
+// CinemaOsExtractor scraper codes, so this is that same CinemaOS backend, just proxied here.
+// redflix-extract/cs3-extract/moviebox's shapes are still unconfirmed, so all four keep being
+// regex-scanned rather than JSON-parsed - it works regardless of the exact envelope. The one thing
+// that regex scan has to special-case: cinemaos-extract's own subtitle track "url"s are a *relative*
+// path (e.g. "/api/subs/vtt?c=...", no scheme/host), unlike every media url which is absolute.
 object PixelflixExtractor {
 
+    private const val reelsdownloadOrigin = "https://embed.reelsdownload.online"
     private const val vidboltBase = "https://vidbolt.xyz/api"
-    private const val reelsdownloadBase = "https://embed.reelsdownload.online/api"
+    private const val reelsdownloadBase = "$reelsdownloadOrigin/api"
 
     private val mediaRegex = Regex("""https?://[^\s"'\\]+?\.(?:m3u8|mpd|mp4|mkv|webm)[^\s"'\\]*""", RegexOption.IGNORE_CASE)
     private val subtitleRegex = Regex("""https?://[^\s"'\\]+?\.(?:vtt|srt)[^\s"'\\]*""", RegexOption.IGNORE_CASE)
+    private val relativeSubtitleRegex = Regex("""/api/subs/vtt\?c=[^\s"'\\]+""")
 
     private fun linkTypeFor(url: String) = when {
         url.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
@@ -37,11 +54,59 @@ object PixelflixExtractor {
         else -> ExtractorLinkType.VIDEO
     }
 
-    // Scans a scrape response's raw text for playable/subtitle URLs and emits them - the one bit
-    // shared by every provider below, vidbolt.xyz or reelsdownload.online alike. A single provider
-    // response can carry several mirrors of the same title (multiple m3u8 URLs) - numbered when
-    // there's more than one so they don't all show up in CloudStream's source list as identical,
-    // indistinguishable "Quasar" entries.
+    private fun JSONObject.toStringMap(): Map<String, String> = keys().asSequence().associateWith { optString(it) }
+
+    // vidbolt.xyz's real, known schema - see the header comment. Every source's "url"/"headers"
+    // are used verbatim; "quality" (e.g. "1080p", "Auto", or even a language name like "Hindi") is
+    // parsed with the same helper every other extractor in CloudStream uses for this, rather than
+    // hand-rolling a "1080p" -> 1080 parser.
+    private suspend fun emitFromVidboltJson(
+        provider: String,
+        body: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) {
+        val json = runCatching { JSONObject(body) }.getOrElse {
+            Log.e(TAG, "$provider: response wasn't JSON: ${it.message}")
+            return
+        }
+        val sources = json.optJSONArray("sources")
+        if (sources == null) {
+            Log.i(TAG, "$provider: no sources in response")
+        }
+        for (i in 0 until (sources?.length() ?: 0)) {
+            val src = sources?.optJSONObject(i) ?: continue
+            val streamUrl = src.optString("url").takeIf { it.isNotBlank() } ?: continue
+            val label = src.optString("name").takeIf { it.isNotBlank() }?.let { "$provider - $it" } ?: provider
+            val headers = src.optJSONObject("headers")?.toStringMap() ?: emptyMap()
+            val type = when (src.optString("type").lowercase()) {
+                "m3u8", "hls" -> ExtractorLinkType.M3U8
+                "dash", "mpd" -> ExtractorLinkType.DASH
+                else -> ExtractorLinkType.VIDEO
+            }
+            val link = runCatching {
+                newExtractorLink(provider, label, streamUrl, type) {
+                    this.headers = headers
+                    this.quality = getQualityFromName(src.optString("quality"))
+                }
+            }.getOrNull() ?: continue
+            callback(link)
+        }
+        json.optJSONArray("subtitles")?.let { subs ->
+            for (i in 0 until subs.length()) {
+                val sub = subs.optJSONObject(i) ?: continue
+                val subUrl = sub.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val label = sub.optString("label").ifBlank { sub.optString("lang") }.ifBlank { provider }
+                subtitleCallback(SubtitleFile(label, subUrl))
+            }
+        }
+    }
+
+    // Scans a scrape response's raw text for playable/subtitle URLs and emits them - only used for
+    // embed.reelsdownload.online below, whose JSON shape (unlike vidbolt.xyz's) was never captured.
+    // A single provider response can carry several mirrors of the same title (multiple m3u8 URLs) -
+    // numbered when there's more than one so they don't all show up in CloudStream's source list as
+    // identical, indistinguishable entries.
     private suspend fun emitFromText(
         provider: String,
         body: String,
@@ -60,6 +125,11 @@ object PixelflixExtractor {
         }
         subtitleRegex.findAll(body).map { it.value }.distinct().forEach { subUrl ->
             subtitleCallback(SubtitleFile(provider, subUrl))
+        }
+        // cinemaos-extract's own subtitle tracks are relative (no scheme/host) - resolve against
+        // reelsdownload.online's own origin, the only host these paths are ever served from.
+        relativeSubtitleRegex.findAll(body).map { it.value }.distinct().forEach { path ->
+            subtitleCallback(SubtitleFile(provider, "$reelsdownloadOrigin$path"))
         }
     }
 
@@ -91,7 +161,7 @@ object PixelflixExtractor {
             Log.e(TAG, "$provider scrape failed for imdb_id=$imdbId: ${it.message}")
             return
         }
-        emitFromText(provider, body, subtitleCallback, callback)
+        emitFromVidboltJson(provider, body, subtitleCallback, callback)
     }
 
     private fun titleYear(title: String?, year: Int?) = buildString {
@@ -127,7 +197,7 @@ object PixelflixExtractor {
         scrapeProvider("4KHDHub", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", subtitleCallback = subtitleCallback, callback = callback)
 
     // Added from a second capture (Pixel server 2.postman_collection.json) - resolved a raw
-    // movie.streamrip.fun m3u8 with no referer/auth needed, already covered by emitFromText.
+    // movie.streamrip.fun m3u8 with no referer/auth needed, same JSON shape as every other provider.
     suspend fun invokeNinetta(imdbId: String?, tmdbId: Int, isMovie: Boolean, season: Int?, episode: Int?, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) =
         scrapeProvider("Ninetta", imdbId, isMovie, season, episode, "tmdbId=$tmdbId${titleYear(title, year)}", viaScraperEndpoint = true, subtitleCallback = subtitleCallback, callback = callback)
 
