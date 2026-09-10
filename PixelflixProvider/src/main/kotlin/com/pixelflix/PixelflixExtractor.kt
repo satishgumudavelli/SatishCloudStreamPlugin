@@ -5,7 +5,6 @@ import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
-import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.json.JSONObject
@@ -34,25 +33,14 @@ private const val TAG = "PixelflixExtractor"
 // mirrors, verified, tracks: [{label, lang, url}]}} lines, one per scraper result, ending
 // {"done":true,"found":true} - the scraperIds (va/vf/z2/s7/q4/mb2...) match this same repo's
 // CinemaOsExtractor scraper codes, so this is that same CinemaOS backend, just proxied here.
-// redflix-extract/cs3-extract/moviebox's shapes are still unconfirmed, so all four keep being
-// regex-scanned rather than JSON-parsed - it works regardless of the exact envelope. The one thing
-// that regex scan has to special-case: cinemaos-extract's own subtitle track "url"s are a *relative*
-// path (e.g. "/api/subs/vtt?c=...", no scheme/host), unlike every media url which is absolute.
+// redflix-extract/cs3-extract/moviebox share this same host and API family, so emitFromJson (below)
+// is used as their default parser too even though their own response bodies are still unconfirmed -
+// if that assumption is wrong for one of them, capture its real body and give it its own parser.
 object PixelflixExtractor {
 
     private const val reelsdownloadOrigin = "https://embed.reelsdownload.online"
     private const val vidboltBase = "https://vidbolt.xyz/api"
     private const val reelsdownloadBase = "$reelsdownloadOrigin/api"
-
-    private val mediaRegex = Regex("""https?://[^\s"'\\]+?\.(?:m3u8|mpd|mp4|mkv|webm)[^\s"'\\]*""", RegexOption.IGNORE_CASE)
-    private val subtitleRegex = Regex("""https?://[^\s"'\\]+?\.(?:vtt|srt)[^\s"'\\]*""", RegexOption.IGNORE_CASE)
-    private val relativeSubtitleRegex = Regex("""/api/subs/vtt\?c=[^\s"'\\]+""")
-
-    private fun linkTypeFor(url: String) = when {
-        url.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
-        url.contains(".mpd", ignoreCase = true) -> ExtractorLinkType.DASH
-        else -> ExtractorLinkType.VIDEO
-    }
 
     private fun JSONObject.toStringMap(): Map<String, String> = keys().asSequence().associateWith { optString(it) }
 
@@ -102,43 +90,13 @@ object PixelflixExtractor {
         }
     }
 
-    // Scans a scrape response's raw text for playable/subtitle URLs and emits them - only used for
-    // embed.reelsdownload.online below, whose JSON shape (unlike vidbolt.xyz's) was never captured.
-    // A single provider response can carry several mirrors of the same title (multiple m3u8 URLs) -
-    // numbered when there's more than one so they don't all show up in CloudStream's source list as
-    // identical, indistinguishable entries.
-    private suspend fun emitFromText(
-        provider: String,
-        body: String,
-        subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit,
-    ) {
-        val streamUrls = mediaRegex.findAll(body).map { it.value }.distinct().toList()
-        streamUrls.forEachIndexed { i, streamUrl ->
-            val name = if (streamUrls.size > 1) "$provider ${i + 1}" else provider
-            val link = runCatching {
-                newExtractorLink(provider, name, streamUrl, linkTypeFor(streamUrl)) {
-                    this.quality = Qualities.Unknown.value
-                }
-            }.getOrNull() ?: return@forEachIndexed
-            callback(link)
-        }
-        subtitleRegex.findAll(body).map { it.value }.distinct().forEach { subUrl ->
-            subtitleCallback(SubtitleFile(provider, subUrl))
-        }
-        // cinemaos-extract's own subtitle tracks are relative (no scheme/host) - resolve against
-        // reelsdownload.online's own origin, the only host these paths are ever served from.
-        relativeSubtitleRegex.findAll(body).map { it.value }.distinct().forEach { path ->
-            subtitleCallback(SubtitleFile(provider, "$reelsdownloadOrigin$path"))
-        }
-    }
-
     // cinemaos-extract's real schema (user-supplied live NDJSON body, 2026-09-10): one JSON object
     // per line, {"source": {id, scraperId, scraperName, label, quality, type, url, mirrors,
     // verified, latencyMs, tracks: [{label, lang, url}]}}, ending with a final {"done","found"}
-    // line that has no "source" key (skipped). Replaces emitFromText's regex scan now that a real
-    // body confirmed the shape - per feedback_verify_extractor_response_before_coding.
-    private suspend fun emitFromCinemaosJson(
+    // line that has no "source" key (skipped). Used as the default parser for every
+    // embed.reelsdownload.online endpoint - see the header comment on why the other three assume
+    // this same shape.
+    private suspend fun emitFromJson(
         provider: String,
         body: String,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -260,7 +218,7 @@ object PixelflixExtractor {
         query: String,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
-        emit: suspend (String, String, (SubtitleFile) -> Unit, (ExtractorLink) -> Unit) -> Unit = ::emitFromText,
+        emit: suspend (String, String, (SubtitleFile) -> Unit, (ExtractorLink) -> Unit) -> Unit = ::emitFromJson,
     ) {
         val body = runCatching { app.get("$reelsdownloadBase/$path?$query").text }.getOrElse {
             Log.e(TAG, "$provider failed: ${it.message}")
@@ -286,7 +244,7 @@ object PixelflixExtractor {
     suspend fun invokeReelsdownloadCinemaos(tmdbId: Int, imdbId: String?, isMovie: Boolean, title: String?, year: Int?, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit) {
         if (imdbId.isNullOrBlank()) return
         val type = if (isMovie) "movie" else "tv"
-        reelsdownloadExtract("Cinemaos", "cinemaos-extract", "type=$type&tmdb_id=$tmdbId&imdb_id=$imdbId${titleYear(title, year)}", subtitleCallback, callback, ::emitFromCinemaosJson)
+        reelsdownloadExtract("Cinemaos", "cinemaos-extract", "type=$type&tmdb_id=$tmdbId&imdb_id=$imdbId${titleYear(title, year)}", subtitleCallback, callback)
     }
 
     // ?type=movie|tv&tmdb_id={id}&imdb_id={imdbId}&title=...&year=... - path has no "-extract" suffix.
