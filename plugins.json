@@ -85,10 +85,10 @@
     },
     {
         "iconUrl": "https://pixelflix.cc/favicon.ico",
-        "fileHash": "sha256-ea63556010a93c255f175370eaab07854fc4895a8395ae681c57322c44154864",
+        "fileHash": "sha256-d9ef5c94be3abcd918502a556921e8d422d4aa4ad35d8b6eddcc98a6ee42c1b0",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 32980,
+        "fileSize": 37748,
         "status": 1,
         "language": "en",
         "authors": [
