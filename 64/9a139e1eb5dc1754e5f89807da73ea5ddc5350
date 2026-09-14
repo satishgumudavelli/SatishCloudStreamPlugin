@@ -1,0 +1,43 @@
+FrameMovieProvider/src/main/kotlin/com/framemovie/DomainResolver.kt
+  s_f0a9d6f52ba65c::t_921f9f7909484e 1-46
+domains.json
+  s_f0a9d6f52ba65c::t_63f3a9d17f8d14 12-13
+FrameMovieProvider/src/main/kotlin/com/framemovie/FrameMovieProviderPlugin.kt
+  s_f0a9d6f52ba65c::t_4d70c20062d651 1-11
+FrameMovieProvider/build.gradle.kts
+  s_f0a9d6f52ba65c::t_88817f93d1a0a9 1-27
+FrameMovieProvider/src/main/kotlin/com/framemovie/FrameMovieProvider.kt
+  s_f0a9d6f52ba65c::t_533d25bcbebd42 117-212,215-216,221-235,268-271,273-280,282-292
+  s_f0a9d6f52ba65c::t_4b050e3a81c3a8 81-83
+  s_f0a9d6f52ba65c::t_90a336df3d613e 29
+  s_f0a9d6f52ba65c::t_b7e87349f622fc 3-4,15,17,19,21-23
+  s_f0a9d6f52ba65c::t_53c5ea0c3c4093 112
+  s_f0a9d6f52ba65c::t_e3b64e6ddfa43f 5,10,14,18,20,27,30,40-60,62-80,84-87,90-107
+  s_f0a9d6f52ba65c::t_b799dd9e5e208f 25-26
+  s_f0a9d6f52ba65c::t_b16b72803b7f14 213-214,217-220
+  s_f0a9d6f52ba65c::t_de9858a962f086 238-252,254-261
+  s_f0a9d6f52ba65c::t_c1ab48b51bb8e6 1-2,6-9,11-13,16,24,28,31-39,61,88-89,108-111,113-116,236-237,262-267,281,293
+  s_f0a9d6f52ba65c::t_9f02eaac8858b2 253
+  s_f0a9d6f52ba65c::t_24c5ba86c4eeaa 272
+FrameMovieProvider/src/main/kotlin/com/framemovie/FrameMovieExtractor.kt
+  s_f0a9d6f52ba65c::t_98013cb1a555db 1-175
+FrameMovieProvider/src/main/kotlin/com/framemovie/FrameMovieApi.kt
+  s_f0a9d6f52ba65c::t_4410dbbf94cce2 24-40
+  s_f0a9d6f52ba65c::t_d6b6cbedb07d5c 1-23,41-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "649a139e1eb5dc1754e5f89807da73ea5ddc5350",
+  "prompts": {},
+  "sessions": {
+    "s_f0a9d6f52ba65c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9cec9f3-ea82-407b-bc49-8b04433a44ab",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
