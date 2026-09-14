@@ -43,10 +43,10 @@
     },
     {
         "iconUrl": "https://www.framemovie.online/favicon.ico",
-        "fileHash": "sha256-0b588470b57d08d93f1dd1c8533802686e59503f304c25a00a6f20003a3ad9f2",
+        "fileHash": "sha256-2cca9a916cdfdbe4e39420d5e6c1d6767b3e8afada1e8c131c67398c484c6f07",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 46746,
+        "fileSize": 59389,
         "status": 1,
         "language": "en",
         "authors": [
