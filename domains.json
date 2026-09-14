@@ -9,6 +9,7 @@
     { "name": "movies4u", "domain": "movies4u.ag" },
     { "name": "multishows", "domain": "multishows.top" },
     { "name": "cineapse", "domain": "cineapse.net" },
-    { "name": "pixelflix", "domain": "pixelflix.cc" }
+    { "name": "pixelflix", "domain": "pixelflix.cc" },
+    { "name": "framemovie", "domain": "framemovie.online" }
   ]
 }
