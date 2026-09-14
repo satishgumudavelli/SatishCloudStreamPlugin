@@ -1,0 +1,30 @@
+FrameMovieProvider/src/main/kotlin/com/framemovie/FrameMovieExtractor.kt
+  s_f0a9d6f52ba65c::t_aec767a5df09e4 4-5,15
+  s_f0a9d6f52ba65c::t_74e3198fbf672b 298-354
+  s_f0a9d6f52ba65c::t_b25ea910e00e51 12
+  s_f0a9d6f52ba65c::t_d01dd28193121c 46-133
+  s_f0a9d6f52ba65c::t_c040dde5c2b72a 225-281,283-297
+  s_f0a9d6f52ba65c::t_437f568faae6eb 149-153,156,159-169,174,183
+  s_f0a9d6f52ba65c::t_16641cb02b685b 282
+  s_f0a9d6f52ba65c::t_675ba25c55ca14 184
+FrameMovieProvider/src/main/kotlin/com/framemovie/FrameMovieProvider.kt
+  s_f0a9d6f52ba65c::t_555580c34bc5f5 277
+  s_f0a9d6f52ba65c::t_b0effe66248038 279
+  s_f0a9d6f52ba65c::t_96bb6a9e3f1e53 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8f2c149fbefc2155e91505d7eb22ca1db9ab401b",
+  "prompts": {},
+  "sessions": {
+    "s_f0a9d6f52ba65c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9cec9f3-ea82-407b-bc49-8b04433a44ab",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
