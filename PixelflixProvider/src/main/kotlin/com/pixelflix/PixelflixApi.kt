@@ -34,6 +34,9 @@ private val tmdbHeaders = mapOf(
 // Paramount+, Crunchyroll, Peacock).
 private const val watchRegion = "US" // TMDB's with_watch_providers filter requires a watch_region
 val homeRows = listOf(
+    "movies" to "All Movie",
+    "tv" to "All TV Shows",
+    "anime" to "All Animes",
     "movie/upcoming" to "In Theatres",
     "movie/now_playing" to "Now Playing",
     "trending/movie/day" to "Top 10 Movies Today",
