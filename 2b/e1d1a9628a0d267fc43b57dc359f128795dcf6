@@ -1,0 +1,19 @@
+PixelflixProvider/src/main/kotlin/com/pixelflix/PixelflixApi.kt
+  s_f0a9d6f52ba65c::t_e2f654c5cbbede 37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2be1d1a9628a0d267fc43b57dc359f128795dcf6",
+  "prompts": {},
+  "sessions": {
+    "s_f0a9d6f52ba65c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9cec9f3-ea82-407b-bc49-8b04433a44ab",
+        "model": "unknown"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
