@@ -274,8 +274,10 @@ class FrameMovieProvider : MainAPI() {
 
         val id = link.id ?: return false
         runAllAsync(
-            { FrameMovieExtractor.invokeVidRock(id, link.season, link.episode, callback) },
+            { FrameMovieExtractor.invokeVidRock(id, link.season, link.episode, subtitleCallback, callback) },
             { FrameMovieExtractor.invokePeachify(id, link.season, link.episode, subtitleCallback, callback) },
+            { FrameMovieExtractor.invokeVidlink(id, link.season, link.episode, subtitleCallback, callback) },
+            { FrameMovieExtractor.invokeVideasy(id, link.season, link.episode, link.title, link.year, subtitleCallback, callback) },
         )
         return true
     }
