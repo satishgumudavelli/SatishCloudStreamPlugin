@@ -107,10 +107,10 @@
     },
     {
         "iconUrl": "https://onlyflix.to/favicon.ico",
-        "fileHash": "sha256-9ecd7bcfa42e7c358bbdeb14de76cbc5069346b1f6c3a68de7d03d195fa9f0fe",
+        "fileHash": "sha256-fd1e2d92492766185dad8994dba2c3e8286d3f273bc551008aa290541d598141",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 49999,
+        "fileSize": 52508,
         "status": 1,
         "language": "en",
         "authors": [
