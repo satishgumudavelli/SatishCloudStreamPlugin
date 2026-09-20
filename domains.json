@@ -10,6 +10,7 @@
     { "name": "multishows", "domain": "multishows.top" },
     { "name": "cineapse", "domain": "cineapse.net" },
     { "name": "pixelflix", "domain": "pixelflix.cc" },
-    { "name": "framemovie", "domain": "framemovie.online" }
+    { "name": "framemovie", "domain": "framemovie.online" },
+    { "name": "onlyflix", "domain": "onlyflix.to" }
   ]
 }
