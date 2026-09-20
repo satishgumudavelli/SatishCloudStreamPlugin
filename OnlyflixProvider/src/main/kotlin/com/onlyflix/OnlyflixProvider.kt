@@ -199,14 +199,19 @@ class OnlyflixProvider : MainAPI() {
                 val embedUrl = player.optString("url").takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 val quality = player.optString("quality").takeIf { it.isNotBlank() }
                 val name = player.optString("name")
+                val serverNumber = player.optInt("number", -1)
                 val task: suspend () -> Unit = {
                     when {
                         name.contains("nontongo", ignoreCase = true) ->
                             OnlyflixExtractor.invokeNontongo(embedUrl, quality, subtitleCallback, callback)
                         name.contains("cdnm", ignoreCase = true) ->
                             OnlyflixExtractor.invokeCdnm(embedUrl, quality, subtitleCallback, callback)
-                        name.contains("vidapi", ignoreCase = true) ->
-                            OnlyflixExtractor.invokeVidapi(embedUrl, quality, subtitleCallback, callback)
+                        // vidapi.xyz frame-busts a direct embedUrl load (see OnlyflixExtractor.
+                        // invokeVidapi) - it needs onlyflix's own page + the matching "Server N"
+                        // tab click instead, using the player list's own 1-based `number` (matches
+                        // the tab labels 1:1, confirmed live).
+                        name.contains("vidapi", ignoreCase = true) && serverNumber > 0 ->
+                            OnlyflixExtractor.invokeVidapi(link.url, serverNumber, quality, subtitleCallback, callback)
                         name.contains("vidfast", ignoreCase = true) ->
                             OnlyflixExtractor.invokeVidfast(embedUrl, quality, subtitleCallback, callback)
                         else -> Unit

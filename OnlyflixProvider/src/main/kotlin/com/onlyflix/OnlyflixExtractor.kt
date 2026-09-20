@@ -461,12 +461,68 @@ object OnlyflixExtractor {
         )
     }
 
+    // vidapi.xyz frame-busts: live-confirmed via Playwright that navigating a browser straight to
+    // `vidapi.xyz/embed/movie/{imdbId}` (as invokeAggregatorWebView did) bounces the tab back out
+    // immediately - a plain `curl` GET returns the real page fine, so this is a client-side JS
+    // check (window.top !== window.self), not a server-side Referer/header gate (unlike CDNM's).
+    // Loading onlyflix's own detail page instead and clicking its "Server N" tab keeps vidapi.xyz
+    // properly iframed, the same way a real visitor reaches it, avoiding the bust entirely.
+    //
+    // Known remaining gap: vidapi.xyz's own UI (confirmed live) then shows a "Play video" overlay,
+    // and - per a user-supplied screenshot - a further dropdown of ~8 named sub-servers ("Server
+    // A/X/N/V/Y/P/B/S...") to pick from before any real stream request fires. Both live inside a
+    // cross-origin nested iframe this script cannot reach via document.querySelector, so this is
+    // not (yet) automated - unverified whether the site auto-selects a default without those
+    // clicks. Left as the honest limit of what's confirmed working, not guessed further.
     suspend fun invokeVidapi(
-        embedUrl: String,
+        pageUrl: String,
+        serverNumber: Int,
         siteQuality: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
-    ) = invokeAggregatorWebView("vidapi.xyz", embedUrl, siteQuality, timeoutMs = 35_000L, subtitleCallback = subtitleCallback, callback = callback)
+    ) {
+        val quality = getQualityFromName(siteQuality ?: "")
+        // Idempotent guard (WebViewResolver re-evaluates `script` on every intercepted request,
+        // per CineapseExtractor's own comment on the same behavior) so the tab isn't re-clicked
+        // repeatedly for the whole timeout window.
+        val script = """
+            (function(){
+              function clickServerTab(){
+                var btns = document.querySelectorAll('[role="tablist"] button, .nav-tabs button');
+                for (var i=0;i<btns.length;i++){
+                  if (btns[i].textContent.trim() === 'Server $serverNumber') { btns[i].click(); return true; }
+                }
+                return false;
+              }
+              if (!window.__ofClickedTab) { window.__ofClickedTab = clickServerTab(); }
+            })();
+        """.trimIndent()
+
+        val resolver = WebViewResolver(
+            Regex("""https?://[^"'\s]+?\.(?:m3u8|mp4)(?:\?[^"'\s]*)?"""),
+            additionalUrls = listOf(Regex("""https?://[^"'\s]+?\.(?:vtt|srt)(?:\?[^"'\s]*)?""")),
+            script = script,
+            useOkhttp = false,
+            timeout = 40_000L,
+        )
+        val result = runCatching { resolver.resolveUsingWebView(pageUrl) }.getOrNull() ?: return
+        val mediaUrl = result.first?.url?.toString() ?: return
+        val type = when {
+            mediaUrl.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
+            mediaUrl.contains(".mp4", ignoreCase = true) -> ExtractorLinkType.VIDEO
+            else -> return
+        }
+
+        result.second.mapNotNull { it.url.toString().takeIf { u -> u.contains(".vtt", true) || u.contains(".srt", true) } }
+            .forEachIndexed { i, subUrl -> subtitleCallback(SubtitleFile(subtitleLabel(subUrl, i), subUrl)) }
+
+        callback(
+            newExtractorLink("vidapi.xyz", "vidapi.xyz [WebView]", mediaUrl, type) {
+                this.referer = pageUrl
+                this.quality = quality
+            }
+        )
+    }
 
     suspend fun invokeVidfast(
         embedUrl: String,
