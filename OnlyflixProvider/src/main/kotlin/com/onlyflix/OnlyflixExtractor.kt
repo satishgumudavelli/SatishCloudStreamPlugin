@@ -222,7 +222,18 @@ object OnlyflixExtractor {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ) {
-        val embedHtml = runCatching { app.get(embedUrl).text }.getOrNull() ?: return
+        // Live-tested (2026-09-21): share.cdnm.ink now 403s a plain GET, even with a Referer
+        // header, with "This player is only available when embedded on a website" - it checks
+        // Sec-Fetch-Dest (only a real browser loading it inside an <iframe> sets this, curl/OkHttp
+        // don't by default). Confirmed live that adding these three headers alone (no other change)
+        // turns the 403 into a 200 - this wasn't required when CDNM was first implemented.
+        val embedHeaders = mapOf(
+            "Referer" to "https://onlyflix.to/",
+            "Sec-Fetch-Dest" to "iframe",
+            "Sec-Fetch-Mode" to "navigate",
+            "Sec-Fetch-Site" to "cross-site",
+        )
+        val embedHtml = runCatching { app.get(embedUrl, headers = embedHeaders).text }.getOrNull() ?: return
         val iframeUrl = Regex("""id="player"[^>]*\bdata-src="([^"]+)"""").find(embedHtml)?.groupValues?.get(1)
             ?.replace("&amp;", "&")?.takeIf { it.isNotBlank() } ?: return
         val quality = getQualityFromName(siteQuality ?: "")
@@ -278,7 +289,24 @@ object OnlyflixExtractor {
         if (tmdbId == null) return
         val headers = mapOf("Referer" to "https://peachify.top/", "Origin" to "https://peachify.top")
 
-        listOf("air", "holly", "moviebox").amap { server ->
+        // /subs/ is a separate OpenSubtitles-backed endpoint, not tied to any one air/holly/multi
+        // provider above - live-confirmed to return a plain JSON array (not the per-provider
+        // {"sources":[...],"subtitles":[...]} shape).
+        val subsUrl = if (season == null) "$peachifyApi/subs/movie/$tmdbId" else "$peachifyApi/subs/tv/$tmdbId/$season/$episode"
+        runCatching { JSONArray(app.get(subsUrl, headers = headers).text) }.getOrNull()?.let { subs ->
+            for (i in 0 until subs.length()) {
+                val sub = subs.optJSONObject(i) ?: continue
+                val subUrl = sub.optString("url").takeIf { it.isNotBlank() } ?: continue
+                val lang = sub.optString("display").takeIf { it.isNotBlank() } ?: sub.optString("language", "Unknown")
+                subtitleCallback(SubtitleFile(lang, subUrl))
+            }
+        }
+
+        // Live-tested against none.eat-peach.sbs directly (2026-09-21): "moviebox" now 404s
+        // ("Provider not Found") - the server list ported from VidboxExtractor/FrameMovieExtractor
+        // was stale. "multi" is confirmed live to return real sources; kept "air"/"holly" since
+        // they respond 200 (just empty for the titles tested, not dead like moviebox).
+        listOf("air", "holly", "multi").amap { server ->
             val url = if (season == null) "$peachifyApi/$server/movie/$tmdbId"
             else "$peachifyApi/$server/tv/$tmdbId/$season/$episode"
             val json = runCatching { JSONObject(app.get(url, headers = headers).text) }.getOrNull() ?: return@amap
