@@ -204,11 +204,11 @@ class OnlyflixProvider : MainAPI() {
                         name.contains("nontongo", ignoreCase = true) ->
                             OnlyflixExtractor.invokeNontongo(embedUrl, quality, subtitleCallback, callback)
                         name.contains("cdnm", ignoreCase = true) ->
-                            OnlyflixExtractor.invokeCdnm(embedUrl, quality, callback)
+                            OnlyflixExtractor.invokeCdnm(embedUrl, quality, subtitleCallback, callback)
                         name.contains("vidapi", ignoreCase = true) ->
-                            OnlyflixExtractor.invokeVidapi(embedUrl, quality, callback)
+                            OnlyflixExtractor.invokeVidapi(embedUrl, quality, subtitleCallback, callback)
                         name.contains("vidfast", ignoreCase = true) ->
-                            OnlyflixExtractor.invokeVidfast(embedUrl, quality, callback)
+                            OnlyflixExtractor.invokeVidfast(embedUrl, quality, subtitleCallback, callback)
                         else -> Unit
                     }
                 }

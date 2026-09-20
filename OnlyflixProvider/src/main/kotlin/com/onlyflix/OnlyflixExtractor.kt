@@ -210,9 +210,16 @@ object OnlyflixExtractor {
     // the resulting request) reaches it without reimplementing the obfuscation, the same pattern
     // CinemaOsExtractor.invokeCinemaosWebview already uses in this repo for a different site's
     // WebView fallback.
+    // A subtitle-file URL's own filename sometimes names the language (Vidmoly-style
+    // `..._English.vtt`); CDNM's own `cdn.iamcdn.net/subtitle/{id}/{randomToken}.srt` never does -
+    // fall back to a generic indexed label rather than guessing (spec.md edge case).
+    private fun subtitleLabel(url: String, index: Int): String =
+        Regex("""_([A-Za-z]+)\.(?:vtt|srt)(?:\?|$)""").find(url)?.groupValues?.get(1) ?: "Subtitle ${index + 1}"
+
     suspend fun invokeCdnm(
         embedUrl: String,
         siteQuality: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ) {
         val embedHtml = runCatching { app.get(embedUrl).text }.getOrNull() ?: return
@@ -220,20 +227,21 @@ object OnlyflixExtractor {
             ?.replace("&amp;", "&")?.takeIf { it.isNotBlank() } ?: return
         val quality = getQualityFromName(siteQuality ?: "")
 
-        val mediaRes = runCatching {
-            app.get(
-                iframeUrl,
-                referer = embedUrl,
-                interceptor = WebViewResolver(
-                    Regex("""https?://[^"'\s]+?\.m3u8(?:\?[^"'\s]*)?"""),
-                    useOkhttp = false,
-                    timeout = 25_000L,
-                )
-            )
-        }.getOrNull() ?: return
-
-        val mediaUrl = mediaRes.url
+        // additionalUrls also captures cdn.iamcdn.net/subtitle/{id}/{token}.srt in the same
+        // WebView pass - resolveUsingWebView (not the plain interceptor style) is what makes that
+        // second list available, per WebViewResolver's own doc comment (see CineapseExtractor).
+        val resolver = WebViewResolver(
+            Regex("""https?://[^"'\s]+?\.m3u8(?:\?[^"'\s]*)?"""),
+            additionalUrls = listOf(Regex("""https?://[^"'\s]+?\.srt(?:\?[^"'\s]*)?""")),
+            useOkhttp = false,
+            timeout = 25_000L,
+        )
+        val result = runCatching { resolver.resolveUsingWebView(iframeUrl, referer = embedUrl) }.getOrNull() ?: return
+        val mediaUrl = result.first?.url?.toString() ?: return
         if (!mediaUrl.contains(".m3u8", ignoreCase = true)) return
+
+        result.second.mapNotNull { it.url.toString().takeIf { u -> u.contains(".srt", ignoreCase = true) } }
+            .forEachIndexed { i, subUrl -> subtitleCallback(SubtitleFile(subtitleLabel(subUrl, i), subUrl)) }
 
         callback(
             newExtractorLink("CDNM", "CDNM", mediaUrl, ExtractorLinkType.M3U8) {
@@ -392,26 +400,31 @@ object OnlyflixExtractor {
         embedUrl: String,
         siteQuality: String?,
         timeoutMs: Long,
+        subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit,
     ) {
         val quality = getQualityFromName(siteQuality ?: "")
-        val mediaRes = runCatching {
-            app.get(
-                embedUrl,
-                interceptor = WebViewResolver(
-                    Regex("""https?://[^"'\s]+?\.(?:m3u8|mp4)(?:\?[^"'\s]*)?"""),
-                    useOkhttp = false,
-                    timeout = timeoutMs,
-                )
-            )
-        }.getOrNull() ?: return
-
-        val mediaUrl = mediaRes.url
+        // additionalUrls also captures whichever mirror's own subtitle files fire in the same
+        // WebView pass (Vidmoly-style `srt.vidmoly.me/.../{lang}.vtt`, or a plain `.srt`) - see
+        // invokeCdnm's comment on why resolveUsingWebView (not the plain interceptor style) is
+        // what makes that second list available at all.
+        val resolver = WebViewResolver(
+            Regex("""https?://[^"'\s]+?\.(?:m3u8|mp4)(?:\?[^"'\s]*)?"""),
+            additionalUrls = listOf(Regex("""https?://[^"'\s]+?\.(?:vtt|srt)(?:\?[^"'\s]*)?""")),
+            useOkhttp = false,
+            timeout = timeoutMs,
+        )
+        val result = runCatching { resolver.resolveUsingWebView(embedUrl) }.getOrNull() ?: return
+        val mediaUrl = result.first?.url?.toString() ?: return
         val type = when {
             mediaUrl.contains(".m3u8", ignoreCase = true) -> ExtractorLinkType.M3U8
             mediaUrl.contains(".mp4", ignoreCase = true) -> ExtractorLinkType.VIDEO
             else -> return
         }
+
+        result.second.mapNotNull { it.url.toString().takeIf { u -> u.contains(".vtt", true) || u.contains(".srt", true) } }
+            .forEachIndexed { i, subUrl -> subtitleCallback(SubtitleFile(subtitleLabel(subUrl, i), subUrl)) }
+
         callback(
             newExtractorLink(source, "$source [WebView]", mediaUrl, type) {
                 this.referer = embedUrl
@@ -420,9 +433,18 @@ object OnlyflixExtractor {
         )
     }
 
-    suspend fun invokeVidapi(embedUrl: String, siteQuality: String?, callback: (ExtractorLink) -> Unit) =
-        invokeAggregatorWebView("vidapi.xyz", embedUrl, siteQuality, timeoutMs = 35_000L, callback = callback)
+    suspend fun invokeVidapi(
+        embedUrl: String,
+        siteQuality: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) = invokeAggregatorWebView("vidapi.xyz", embedUrl, siteQuality, timeoutMs = 35_000L, subtitleCallback = subtitleCallback, callback = callback)
 
-    suspend fun invokeVidfast(embedUrl: String, siteQuality: String?, callback: (ExtractorLink) -> Unit) =
-        invokeAggregatorWebView("vidfast.vc", embedUrl, siteQuality, timeoutMs = 35_000L, callback = callback)
+    suspend fun invokeVidfast(
+        embedUrl: String,
+        siteQuality: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit,
+    ) =
+        invokeAggregatorWebView("vidfast.vc", embedUrl, siteQuality, timeoutMs = 35_000L, subtitleCallback = subtitleCallback, callback = callback)
 }
