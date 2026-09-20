@@ -2,6 +2,7 @@ package com.onlyflix
 
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.app
+import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.getQualityFromName
@@ -50,7 +51,7 @@ object OnlyflixExtractor {
         val playerHtml = runCatching { app.get(multiSourceUrl, referer = embedUrl).text }.getOrNull() ?: return
         val quality = getQualityFromName(siteQuality ?: "")
 
-        Regex("""const sources\s*=\s*(\[.*?]);""").find(playerHtml)?.groupValues?.get(1)
+        Regex("""const sources\s*=\s*(\[.*?]);""", RegexOption.DOT_MATCHES_ALL).find(playerHtml)?.groupValues?.get(1)
             ?.let { runCatching { JSONArray(it) }.getOrNull() }
             ?.let { sources ->
                 for (i in 0 until sources.length()) {
@@ -66,7 +67,7 @@ object OnlyflixExtractor {
                 }
             }
 
-        Regex("""const tracks\s*=\s*(\[.*?]);""").find(playerHtml)?.groupValues?.get(1)
+        Regex("""const tracks\s*=\s*(\[.*?]);""", RegexOption.DOT_MATCHES_ALL).find(playerHtml)?.groupValues?.get(1)
             ?.let { runCatching { JSONArray(it) }.getOrNull() }
             ?.let { tracks ->
                 for (i in 0 until tracks.length()) {
@@ -76,5 +77,51 @@ object OnlyflixExtractor {
                     subtitleCallback(SubtitleFile(label, fileUrl))
                 }
             }
+    }
+
+    // Server "CDNM" (share.cdnm.ink) - live-verified request chain (user-supplied Postman capture,
+    // cross-checked live): share.cdnm.ink/embed/imdb/{imdbId} server-renders an
+    // <iframe id="player" data-src="{randomSubdomain}.cdnmovies-stream.online/imdb/{imdbId}/iframe?...">.
+    // That iframe page loads a per-session-hashed `player-*.js` which decrypts an obfuscated inline
+    // `file:` string (NOT plain base64 - confirmed by attempting to decode it: it fails as a single
+    // block and as `//`-delimited blocks, so this is a custom/versioned scheme, not something to
+    // reverse-engineer blind per Constitution I) and requests the real playlist from
+    // `s1.cdnmvs.online/{token}:{expiry}/.../index-v1-a1.m3u8` - confirmed live by watching that
+    // exact request actually fire with a 200. Real m3u8, no CAPTCHA gate (unlike vidapi.xyz) - so a
+    // WebViewResolver (letting a real WebView execute the site's own unmodified JS and intercepting
+    // the resulting request) reaches it without reimplementing the obfuscation, the same pattern
+    // CinemaOsExtractor.invokeCinemaosWebview already uses in this repo for a different site's
+    // WebView fallback.
+    suspend fun invokeCdnm(
+        embedUrl: String,
+        siteQuality: String?,
+        callback: (ExtractorLink) -> Unit,
+    ) {
+        val embedHtml = runCatching { app.get(embedUrl).text }.getOrNull() ?: return
+        val iframeUrl = Regex("""id="player"[^>]*\bdata-src="([^"]+)"""").find(embedHtml)?.groupValues?.get(1)
+            ?.replace("&amp;", "&")?.takeIf { it.isNotBlank() } ?: return
+        val quality = getQualityFromName(siteQuality ?: "")
+
+        val mediaRes = runCatching {
+            app.get(
+                iframeUrl,
+                referer = embedUrl,
+                interceptor = WebViewResolver(
+                    Regex("""https?://[^"'\s]+?\.m3u8(?:\?[^"'\s]*)?"""),
+                    useOkhttp = false,
+                    timeout = 25_000L,
+                )
+            )
+        }.getOrNull() ?: return
+
+        val mediaUrl = mediaRes.url
+        if (!mediaUrl.contains(".m3u8", ignoreCase = true)) return
+
+        callback(
+            newExtractorLink("CDNM", "CDNM", mediaUrl, ExtractorLinkType.M3U8) {
+                this.referer = iframeUrl
+                this.quality = quality
+            }
+        )
     }
 }

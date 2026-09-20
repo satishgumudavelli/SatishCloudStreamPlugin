@@ -185,6 +185,8 @@ class OnlyflixProvider : MainAPI() {
                     when {
                         name.contains("nontongo", ignoreCase = true) ->
                             OnlyflixExtractor.invokeNontongo(embedUrl, quality, subtitleCallback, callback)
+                        name.contains("cdnm", ignoreCase = true) ->
+                            OnlyflixExtractor.invokeCdnm(embedUrl, quality, callback)
                         // vidapi.xyz and vidfast.vc are deferred - no independently verified
                         // protocol yet (research.md Decision 6, Constitution II).
                         else -> Unit
