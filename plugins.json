@@ -106,6 +106,27 @@
         "name": "MultiShowsProvider"
     },
     {
+        "iconUrl": "https://onlyflix.to/favicon.ico",
+        "fileHash": "sha256-632319cde119afdf3595922088dbbbe0cc40ec52cab8d045a3866ece2e005389",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 26255,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "Satish Gumudavelli"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "OnlyflixProvider",
+        "description": "Onlyflix - Movies & TV Shows streaming",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/OnlyflixProvider.cs3",
+        "name": "OnlyflixProvider"
+    },
+    {
         "iconUrl": "https://pixelflix.cc/favicon.ico",
         "fileHash": "sha256-2b1bdc48465c885734a940f620300c86a8f56984ee34c6195a363863975e9a07",
         "apiVersion": 1,
