@@ -1,0 +1,24 @@
+OnlyflixProvider/src/main/kotlin/com/onlyflix/OnlyflixProvider.kt
+  s_addf3536210208::t_b047e7e93afe25 188-189
+OnlyflixProvider/src/main/kotlin/com/onlyflix/OnlyflixExtractor.kt
+  s_addf3536210208::t_7c7dc58234fb30 54
+  s_addf3536210208::t_9c4e6614d48345 81-126
+  s_addf3536210208::t_27b76069e073d6 70
+  s_addf3536210208::t_f1de65c81b79e5 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7687944bf3870a8f3fc06e22d8a11e351d4abdd0",
+  "prompts": {},
+  "sessions": {
+    "s_addf3536210208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97bbcdc0-586b-48cf-8a2f-5a89a06d616e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
