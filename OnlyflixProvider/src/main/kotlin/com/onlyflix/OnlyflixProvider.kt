@@ -17,6 +17,8 @@ import com.lagradost.cloudstream3.newMovieSearchResponse
 import com.lagradost.cloudstream3.newTvSeriesLoadResponse
 import com.lagradost.cloudstream3.newTvSeriesSearchResponse
 import com.lagradost.cloudstream3.runAllAsync
+import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import org.jsoup.nodes.Element
 
@@ -143,7 +145,7 @@ class OnlyflixProvider : MainAPI() {
                 val epUrl = card.selectFirst("a.episode-watch-link")?.attr("href")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 val epNumber = Regex("""\d+""").find(card.selectFirst(".episode-card-kicker")?.text() ?: "")?.value?.toIntOrNull()
                 val epName = card.selectFirst(".episode-card-title")?.text()?.trim()
-                newEpisode(epUrl) {
+                newEpisode(OnlyflixLoadData(epUrl, title, year).toJson()) {
                     this.name = epName
                     this.season = season
                     this.episode = epNumber
@@ -156,13 +158,25 @@ class OnlyflixProvider : MainAPI() {
                 this.year = year
             }
         } else {
-            newMovieLoadResponse(title, url, TvType.Movie, url) {
+            newMovieLoadResponse(title, url, TvType.Movie, OnlyflixLoadData(url, title, year).toJson()) {
                 this.posterUrl = poster
                 this.plot = plot
                 this.tags = genres
                 this.year = year
             }
         }
+    }
+
+    // A player's own url already carries the imdbId (and, for episodes, /season/episode - see
+    // contracts/movie-tv-embed-servers.md) - reused to bridge to the TMDB id Peachify/Videasy need
+    // (OnlyflixExtractor.imdbToTmdbId) instead of re-deriving it from the page separately.
+    private fun parseImdbSeasonEpisode(playerUrl: String): Triple<String, Int?, Int?>? {
+        Regex("""(tt\d+)/(\d+)/(\d+)""").find(playerUrl)?.let {
+            val (id, s, e) = it.destructured
+            return Triple(id, s.toIntOrNull(), e.toIntOrNull())
+        }
+        val id = Regex("""tt\d+""").find(playerUrl)?.value ?: return null
+        return Triple(id, null, null)
     }
 
     override suspend fun loadLinks(
@@ -172,9 +186,13 @@ class OnlyflixProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         mainUrl = domainResolver.resolveMainUrl()
-        val document = app.get(data).document
+        val link = parseJson<OnlyflixLoadData>(data)
+        val document = app.get(link.url).document
         val players = OnlyflixExtractor.getPlayers(mainUrl, document)
         if (players.isEmpty()) return false
+
+        val ids = players.firstNotNullOfOrNull { parseImdbSeasonEpisode(it.optString("url")) }
+        var tmdbId: Int? = null
 
         runAllAsync(
             *players.mapNotNull { player ->
@@ -187,14 +205,33 @@ class OnlyflixProvider : MainAPI() {
                             OnlyflixExtractor.invokeNontongo(embedUrl, quality, subtitleCallback, callback)
                         name.contains("cdnm", ignoreCase = true) ->
                             OnlyflixExtractor.invokeCdnm(embedUrl, quality, callback)
-                        // vidapi.xyz and vidfast.vc are deferred - no independently verified
-                        // protocol yet (research.md Decision 6, Constitution II).
+                        name.contains("vidapi", ignoreCase = true) ->
+                            OnlyflixExtractor.invokeVidapi(embedUrl, quality, callback)
+                        name.contains("vidfast", ignoreCase = true) ->
+                            OnlyflixExtractor.invokeVidfast(embedUrl, quality, callback)
                         else -> Unit
                     }
                 }
                 task
             }.toTypedArray()
         )
+
+        // Peachify/Videasy aren't in onlyflix's own player list - they're mirrors vidapi.xyz's own
+        // aggregator offers internally (research.md Decision 6b) - called directly here with the
+        // shared imdbId/season/episode rather than routed through vidapi.xyz's WebView catch-all,
+        // since both already have an independently verified, non-WebView protocol in this repo.
+        if (ids != null) {
+            val (imdbId, season, episode) = ids
+            tmdbId = OnlyflixExtractor.imdbToTmdbId(imdbId, isTv = season != null)
+            if (tmdbId != null) {
+                runAllAsync(
+                    { OnlyflixExtractor.invokePeachify(tmdbId, season, episode, subtitleCallback, callback) },
+                    { OnlyflixExtractor.invokeVideasy(tmdbId, season, episode, link.title, link.year, subtitleCallback, callback) },
+                )
+            }
+        }
         return true
     }
+
+    data class OnlyflixLoadData(val url: String, val title: String? = null, val year: Int? = null)
 }
