@@ -1,0 +1,31 @@
+OnlyflixProvider/src/main/kotlin/com/onlyflix/OnlyflixExtractor.kt
+  s_addf3536210208::t_51ffb0f2dd017b 1-80
+OnlyflixProvider/src/main/kotlin/com/onlyflix/OnlyflixProvider.kt
+  s_addf3536210208::t_86ec642b35a43a 57
+  s_addf3536210208::t_76a7083a99e075 70
+  s_addf3536210208::t_ce59d8ad8cc438 1-56,58-69,71-198
+OnlyflixProvider/src/main/kotlin/com/onlyflix/OnlyflixProviderPlugin.kt
+  s_addf3536210208::t_1d0804bd590f2f 1-11
+OnlyflixProvider/build.gradle.kts
+  s_addf3536210208::t_c181e7f23bffde 1-26
+domains.json
+  s_addf3536210208::t_883eb9c0cf65ee 13-14
+OnlyflixProvider/src/main/kotlin/com/onlyflix/DomainResolver.kt
+  s_addf3536210208::t_1e9ad5387ac90c 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8a1e8d8d98b6f915364cc37e27d4c7d30ea7df74",
+  "prompts": {},
+  "sessions": {
+    "s_addf3536210208": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97bbcdc0-586b-48cf-8a2f-5a89a06d616e",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
