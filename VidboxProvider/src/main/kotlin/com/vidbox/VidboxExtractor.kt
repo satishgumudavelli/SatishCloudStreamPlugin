@@ -433,7 +433,8 @@ object VidboxExtractor {
     )
     private val vuflixFallbackProviders = listOf(
         "vsembed", "moonflix", "megasource", "hdghar", "moviebox", "cineplay", "huhu",
-        "bingr", "onlyflix", "vaplayer", "flixhqz", "castle", "cinejoy", "filesun", "yoru"
+        "bingr", "onlyflix", "vaplayer", "flixhqz", "castle", "cinejoy", "filesun", "yoru",
+        "fzmovies", "opstream", "yesmovies", "torrentio", "netmirror", "hdhub4u"
     )
 
     private fun unwrapVuflixUrl(rawUrl: String): Pair<String, Map<String, String>> {
