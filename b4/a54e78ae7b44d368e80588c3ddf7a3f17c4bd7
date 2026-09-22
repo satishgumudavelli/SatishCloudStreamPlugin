@@ -1,0 +1,14 @@
+domains.json
+  h_2f2e0daf8435ba 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b4a54e78ae7b44d368e80588c3ddf7a3f17c4bd7",
+  "prompts": {},
+  "humans": {
+    "h_2f2e0daf8435ba": {
+      "author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
