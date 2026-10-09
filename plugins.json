@@ -65,10 +65,10 @@
     },
     {
         "iconUrl": "https://movies4u.ag/favicon.ico",
-        "fileHash": "sha256-885ac25b40447ca43f10dcb0bdaab7ffcef5be0306739f57ae291e71692511dc",
+        "fileHash": "sha256-22ddfe8088081de078ed46e93ad60aa36508c93197d823f50b2fa3bde4940c2a",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 74218,
+        "fileSize": 74186,
         "status": 1,
         "language": "hi",
         "authors": [
@@ -149,10 +149,10 @@
     },
     {
         "iconUrl": "https://vidbox.vc/logo.png",
-        "fileHash": "sha256-094b74638a1f06c236c5760262260a4bd20000617e8fb907d08fa2ab7addb118",
+        "fileHash": "sha256-b0fedfb1aec455354b00aec2d4fd1eca77cd0006493685c029d6851f39a0b2ef",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 112188,
+        "fileSize": 112251,
         "status": 1,
         "language": "en",
         "authors": [
