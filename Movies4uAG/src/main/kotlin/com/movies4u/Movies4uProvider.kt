@@ -8,7 +8,7 @@ import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
 class Movies4uProvider : MainAPI() {
-    override var mainUrl = "https://movies4u.ag"
+    override var mainUrl = ""
     override var name = "Movies4uAG"
     override val hasMainPage = true
     override val hasChromecastSupport = true
@@ -18,10 +18,11 @@ class Movies4uProvider : MainAPI() {
 
     // domains.json lives on `master` (fetched fresh every resolve, not baked into the .cs3) so a
     // domain rotation can go live by editing this file alone, no plugin rebuild/republish needed.
+    // fallbackDomain only kicks in if domains.json itself is unreachable.
     private val domainResolver = DomainResolver(
         domainsJsonUrl = "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/master/domains.json",
         targetName = "movies4u",
-        fallbackDomain = mainUrl.removePrefix("https://"),
+        fallbackDomain = "movies4u.uy",
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
