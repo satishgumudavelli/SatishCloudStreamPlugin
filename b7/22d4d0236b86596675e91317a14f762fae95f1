@@ -1,0 +1,22 @@
+Movies4uAG/src/main/kotlin/com/movies4u/Movies4uProvider.kt
+  s_66936c064a9d44::t_876ee15e97400e 11,21
+  s_66936c064a9d44::t_2d34744713d92a 25
+domains.json
+  s_66936c064a9d44::t_2e71ab7c31e43d 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b722d4d0236b86596675e91317a14f762fae95f1",
+  "prompts": {},
+  "sessions": {
+    "s_66936c064a9d44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eae69a1c-26f1-4cf4-9506-a1f5a4ba8fdd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
