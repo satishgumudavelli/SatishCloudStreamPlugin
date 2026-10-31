@@ -69,7 +69,50 @@ object AlmostOttExtractor {
         else if (json.has("download_url")) listOf(json) else emptyList()
     }
 
+    // The player (tgvid.lovable.app) streams through vidsync.pro: a plain JSON API keyed by TMDB id.
+    // Each source's `url` is vidsync's own HLS proxy (works with no headers, live-checked for
+    // movies and TV); its `data` query param is JSON carrying audio language + quality.
+    private const val streamApi = "https://vidsync.pro"
+    private val streamHeaders = mapOf("Origin" to "https://tgvid.lovable.app", "Referer" to "https://tgvid.lovable.app/")
+
+    private suspend fun invokeStream(isMovie: Boolean, id: Int, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit): Boolean {
+        val type = if (isMovie) "movie" else "tv"
+        val res = runCatching {
+            app.get("$streamApi/api/stream?type=$type&id=$id&season=${season ?: 1}&episode=${episode ?: 1}", headers = streamHeaders, timeout = 30)
+        }.getOrElse { Log.w(TAG, "vidsync failed: ${it.message}"); return false }
+        if (res.code != 200) { Log.d(TAG, "vidsync -> HTTP ${res.code}"); return false }
+        val sources = runCatching { JSONObject(res.text).optJSONArray("sources") }.getOrNull() ?: return false
+        val seen = HashSet<String>()
+        var emitted = false
+        for (i in 0 until sources.length()) {
+            val s = sources.optJSONObject(i) ?: continue
+            val path = s.optString("url").takeIf { it.startsWith("/api/") } ?: continue
+            if (!seen.add(path)) continue
+            val data = runCatching {
+                JSONObject(java.net.URLDecoder.decode(Regex("""[?&]data=([^&]+)""").find(path)?.groupValues?.get(1).orEmpty(), "UTF-8"))
+            }.getOrNull()
+            if (data?.optString("streamType") != "hls") continue
+            val q = data.optString("quality")
+            val quality = getQualityFromName(q).takeIf { it != Qualities.Unknown.value } ?: Qualities.Unknown.value
+            val server = s.optString("server").ifBlank { "vidsync" }
+            val provider = s.optJSONObject("provider")?.optString("name").orEmpty()
+            val audio = data.optString("audio").uppercase().takeIf { it.isNotBlank() }
+            val label = listOfNotNull("AlmostOTT", server, provider.takeIf { it.isNotBlank() && it != server }, q.takeIf { it.isNotBlank() }, audio).joinToString(" · ")
+            callback(newExtractorLink("AlmostOTT", label, "$streamApi$path", ExtractorLinkType.M3U8) {
+                this.quality = quality
+                this.referer = ""
+            })
+            emitted = true
+        }
+        return emitted
+    }
+
     suspend fun invoke(isMovie: Boolean, id: Int, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit): Boolean {
+        val streams = invokeStream(isMovie, id, season, episode, callback)
+        return invokeDownloads(isMovie, id, season, episode, callback) || streams
+    }
+
+    private suspend fun invokeDownloads(isMovie: Boolean, id: Int, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit): Boolean {
         // v2 first like the site; v1 only when v2 has nothing (site does the same).
         val files = fetch("v2", isMovie, id, season, episode).ifEmpty { fetch("v1", isMovie, id, season, episode) }
         if (files.isEmpty()) return false
