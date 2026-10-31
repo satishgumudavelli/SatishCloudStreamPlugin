@@ -1,10 +1,10 @@
 [
     {
         "iconUrl": "https://almostott.aethoflix.world/favicon.ico",
-        "fileHash": "sha256-7e18821ed2b941cb6d06796ae934cd9b8c4285a8ea3b9af16a8565535146c8a3",
+        "fileHash": "sha256-c46c29b8c7996388ea88f40de348afe4e8507414f2810192521e8a587e701156",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 33947,
+        "fileSize": 34705,
         "status": 1,
         "language": "en",
         "authors": [
