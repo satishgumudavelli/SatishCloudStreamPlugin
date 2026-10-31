@@ -1,0 +1,34 @@
+AlmostOttProvider/src/main/kotlin/com/almostott/AlmostOttExtractor.kt
+  s_b1bc688d4f546c::t_28b535376883ef 79-83
+  s_b1bc688d4f546c::t_a2da7ed1f447d5 1-78,84-105
+AlmostOttProvider/src/main/kotlin/com/almostott/DomainResolver.kt
+  s_b1bc688d4f546c::t_28b535376883ef 1-46
+domains.json
+  s_b1bc688d4f546c::t_28b535376883ef 14-15
+AlmostOttProvider/src/main/kotlin/com/almostott/AlmostOttProvider.kt
+  s_b1bc688d4f546c::t_78e70d681c36b3 25-27,52-61,90-120
+  s_b1bc688d4f546c::t_28b535376883ef 36-43,48,72,75-86,130,142
+  s_b1bc688d4f546c::t_948e0f00d4f493 1-24,28-35,44-47,49-51,62-71,73-74,87-89,121-129,131-141,143-145
+AlmostOttProvider/build.gradle.kts
+  s_b1bc688d4f546c::t_bdff1bc1936d10 1-25
+AlmostOttProvider/src/main/kotlin/com/almostott/AlmostOttApi.kt
+  s_b1bc688d4f546c::t_36561e6ff9abca 1-68
+AlmostOttProvider/src/main/kotlin/com/almostott/AlmostOttProviderPlugin.kt
+  s_b1bc688d4f546c::t_3cf88a5bbaf873 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f76d81d9cce9802b8276d0e399cf13c087cbe50",
+  "prompts": {},
+  "sessions": {
+    "s_b1bc688d4f546c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9136d922-24dc-4549-9c5d-d565cbc8c90b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
