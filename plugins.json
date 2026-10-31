@@ -1,5 +1,27 @@
 [
     {
+        "iconUrl": "https://almostott.aethoflix.world/favicon.ico",
+        "fileHash": "sha256-7e18821ed2b941cb6d06796ae934cd9b8c4285a8ea3b9af16a8565535146c8a3",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 33947,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "Satish Gumudavelli"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime"
+        ],
+        "version": 1,
+        "internalName": "AlmostOttProvider",
+        "description": "AlmostOTT - Movies, TV Shows, Anime & Dramas",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/AlmostOttProvider.cs3",
+        "name": "AlmostOttProvider"
+    },
+    {
         "iconUrl": "https://www.cineapse.net/icon.png",
         "fileHash": "sha256-31ceab01876cedbdc39d8281609f9c95eb2ed7c68f7e7a060ea84e1e2a755e17",
         "apiVersion": 1,
