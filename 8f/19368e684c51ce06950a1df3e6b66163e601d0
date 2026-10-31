@@ -1,0 +1,20 @@
+AlmostOttProvider/src/main/kotlin/com/almostott/AlmostOttExtractor.kt
+  s_b1bc688d4f546c::t_73a4329a6becc7 93
+  s_b1bc688d4f546c::t_e6fc698e9ff36b 41-52,92,94-95,97-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f19368e684c51ce06950a1df3e6b66163e601d0",
+  "prompts": {},
+  "sessions": {
+    "s_b1bc688d4f546c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9136d922-24dc-4549-9c5d-d565cbc8c90b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
