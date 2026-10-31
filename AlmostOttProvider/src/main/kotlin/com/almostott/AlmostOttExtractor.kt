@@ -107,9 +107,38 @@ object AlmostOttExtractor {
         return emitted
     }
 
+    // The player's own backend (tgvidapi.lovable.app) answers plain JSON for a TMDB id (the
+    // player's server function only forwards it, XOR-scrambled; the direct call is not scrambled).
+    // Each link is a master HLS playlist with real EXT-X-MEDIA audio tracks (Hindi/English/...).
+    private suspend fun invokeTgApi(isMovie: Boolean, id: Int, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit): Boolean {
+        val path = if (isMovie) "/api/m/$id" else "/api/tv/$id/${season ?: 1}/${episode ?: 1}"
+        val res = runCatching { app.get("https://tgvidapi.lovable.app$path", headers = streamHeaders, timeout = 30) }
+            .getOrElse { Log.w(TAG, "tgvidapi failed: ${it.message}"); return false }
+        if (res.code != 200) { Log.d(TAG, "tgvidapi $path -> HTTP ${res.code}"); return false }
+        val links = runCatching { JSONObject(res.text).optJSONArray("links") }.getOrNull() ?: return false
+        var emitted = false
+        for (i in 0 until links.length()) {
+            val l = links.optJSONObject(i) ?: continue
+            val url = l.optString("url").takeIf { it.startsWith("https://") && l.optString("type") == "hls" } ?: continue
+            val q = l.optString("quality")
+            val audios = l.optJSONArray("audios")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+            val label = listOfNotNull(
+                "AlmostOTT", l.optString("server").ifBlank { "TG" }, q.takeIf { it.isNotBlank() },
+                audios.joinToString("+").takeIf { it.isNotEmpty() },
+            ).joinToString(" · ")
+            callback(newExtractorLink("AlmostOTT", label, url, ExtractorLinkType.M3U8) {
+                this.quality = getQualityFromName(q).takeIf { it != Qualities.Unknown.value } ?: Qualities.Unknown.value
+                this.referer = ""
+            })
+            emitted = true
+        }
+        return emitted
+    }
+
     suspend fun invoke(isMovie: Boolean, id: Int, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit): Boolean {
+        val tg = invokeTgApi(isMovie, id, season, episode, callback)
         val streams = invokeStream(isMovie, id, season, episode, callback)
-        return invokeDownloads(isMovie, id, season, episode, callback) || streams
+        return invokeDownloads(isMovie, id, season, episode, callback) || streams || tg
     }
 
     private suspend fun invokeDownloads(isMovie: Boolean, id: Int, season: Int?, episode: Int?, callback: (ExtractorLink) -> Unit): Boolean {
