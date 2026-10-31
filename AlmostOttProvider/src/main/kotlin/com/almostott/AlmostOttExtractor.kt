@@ -38,6 +38,18 @@ object AlmostOttExtractor {
         }
     }
 
+    // Presigned R2 URLs carry X-Amz-Date + X-Amz-Expires; the API serves stale cached ones as
+    // well (live: FSLv2 -> 403 ExpiredRequest while FSL from the same response -> 206).
+    private fun isExpiredPresigned(url: String): Boolean {
+        val date = Regex("""[?&]X-Amz-Date=(\d{8}T\d{6})Z""").find(url)?.groupValues?.get(1) ?: return false
+        val ttl = Regex("""[?&]X-Amz-Expires=(\d+)""").find(url)?.groupValues?.get(1)?.toLongOrNull() ?: return false
+        val signedAt = runCatching {
+            java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss", java.util.Locale.US)
+                .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.parse(date)?.time
+        }.getOrNull() ?: return false
+        return System.currentTimeMillis() > signedAt + ttl * 1000
+    }
+
     private fun decode(downloadUrl: String): String? {
         val u = Regex("""[?&]u=([^&]+)""").find(downloadUrl)?.groupValues?.get(1) ?: return downloadUrl.takeIf { it.startsWith("https://") }
         return runCatching { String(Base64.decode(u, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)) }.getOrNull()
@@ -77,10 +89,13 @@ object AlmostOttExtractor {
                 path.endsWith(".m3u8", true) -> ExtractorLinkType.M3U8
                 host.endsWith("pixeldrain.dev") || host.endsWith("pixeldrain.com") ||
                     host.endsWith(".r2.dev") -> ExtractorLinkType.VIDEO
+                host.endsWith(".r2.cloudflarestorage.com") -> {
+                    if (isExpiredPresigned(real)) { Log.d(TAG, "skip expired presigned $host"); continue }
+                    ExtractorLinkType.VIDEO
+                }
                 else -> {
-                    // hubcloud/hubdrive are interstitial pages, *.r2.cloudflarestorage.com presigned
-                    // URLs answered 403 live, and googleusercontent links were never verified
-                    // playable - not directly playable / not guessed at.
+                    // hubcloud/hubdrive are interstitial pages and googleusercontent links were never
+                    // verified playable - not directly playable / not guessed at.
                     Log.d(TAG, "skip unplayable host $host")
                     continue
                 }
