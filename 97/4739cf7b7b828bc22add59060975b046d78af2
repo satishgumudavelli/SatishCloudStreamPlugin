@@ -1,0 +1,21 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/ExtraMovies.kt
+  s_bcf486eafb4d00::t_0d8902b09ac8b3 10-12,14,16,18,21-26,28-41,46-49,55,57,64,70-72,74,78,81
+domains.json
+  s_bcf486eafb4d00::t_9d20d4b142d364 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "974739cf7b7b828bc22add59060975b046d78af2",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
