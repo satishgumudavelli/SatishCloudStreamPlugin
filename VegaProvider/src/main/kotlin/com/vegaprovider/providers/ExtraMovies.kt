@@ -3,13 +3,13 @@ package com.vegaprovider.providers
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.vegaprovider.core.VegaBase
+import com.vegaprovider.extractors.MobileJsrResolver
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
 /**
  * ExtraMovies (urls.json key "extra"), extramovies.sarl (vegamovies-style theme). Menu/category links, cards, search and
- * detail captured live 2026-11-13. Download buttons all point at mobilejsr.com/view/<id>, a link protector that needs its
- * "Unlock Links" form POSTed first; that step is deliberately not automated, so loadLinks yields nothing yet.
+ * detail captured live 2026-11-13. Download buttons all point at mobilejsr.com/view/<id>, a link protector; see MobileJsrResolver.
  */
 class ExtraMovies : VegaBase("extra", "https://extramovies.sarl") {
     override var name = "ExtraMovies (Vega)"
@@ -75,8 +75,14 @@ class ExtraMovies : VegaBase("extra", "https://extramovies.sarl") {
         }
     }
 
-    // ponytail: mobilejsr links need the link protector's "Unlock Links" POST; not automated, so nothing is emitted yet.
     override suspend fun loadLinks(
         data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
-    ): Boolean = false
+    ): Boolean {
+        var any = false
+        data.lines().filter { it.isNotBlank() }.forEach { line ->
+            val (label, url) = line.split("|", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+            runCatching { MobileJsrResolver.resolve(url, label, subtitleCallback) { any = true; callback(it) } }
+        }
+        return any
+    }
 }

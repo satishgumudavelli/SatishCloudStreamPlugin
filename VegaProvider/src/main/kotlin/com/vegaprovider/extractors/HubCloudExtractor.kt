@@ -39,6 +39,8 @@ class HubCloudExtractor : ExtractorApi() {
         // (hubcloud.cx) or - on the VegaCloud-branded clone (vcloud.fit) - a
         // `var url = atob(atob('...'))` script next to a href-less #download button.
         val generateHref = driveDoc.selectFirst("#download")?.attr("href")?.takeIf { it.isNotBlank() && it != "#" }
+            // hubcloud.pw/video/<id> pages carry a plain "Generate Direct Download" anchor instead of #download
+            ?: driveDoc.selectFirst("a[href*=hubcloud.php]")?.attr("href")?.takeIf { it.startsWith("http") }
             ?: driveDoc.select("script").asSequence()
                 .mapNotNull { Regex("""atob\(atob\(['"]([^'"]+)['"]\)\)""").find(it.data())?.groupValues?.get(1) }
                 .firstOrNull()
