@@ -1,0 +1,55 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/KickAssAnime.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 12
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/FourKHdHub.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 13
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/MovieLinkDb.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 15
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/MoviesMod.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 11
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Moviezwap.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 12
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/MxPlayer.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 14
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/SkyMovieHD.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 12
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/UhdMovies.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 11
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/LuxMovies.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 12
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/MoviesDrive.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 12
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/AnimeWorld.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 14
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Hdhub4u.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 15
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/KmMovies.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 15
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/AutoEmbed.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 22
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/KatMovieFix.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 11
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Zeefliz.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 14
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/MovieBoxWeb.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 15
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/MultiMovies.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 13
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/DramaCool.kt
+  s_bcf486eafb4d00::t_386513ad21ed44 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54218e423f337bc698ce15284157c06aeb399d91",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
