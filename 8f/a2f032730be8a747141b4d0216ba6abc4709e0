@@ -1,0 +1,29 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Filmyfly.kt
+  s_bcf486eafb4d00::t_f8c65c9c472dc3 1-92
+domains.json
+  s_bcf486eafb4d00::t_928930b1e3a8d3 37-39
+  s_bcf486eafb4d00::t_7aa65a6d39770c 40
+VegaProvider/src/main/kotlin/com/vegaprovider/VegaProviderPlugin.kt
+  s_bcf486eafb4d00::t_c8d0fea44a403e 8-9,26,37-38,55
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/ExtraMovies.kt
+  s_bcf486eafb4d00::t_60b9b3ed98a695 38
+  s_bcf486eafb4d00::t_77eef892a399a6 1-37,39-71
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Topmovies.kt
+  s_bcf486eafb4d00::t_b2df1590591014 1-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fa2f032730be8a747141b4d0216ba6abc4709e0",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
