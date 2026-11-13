@@ -32,8 +32,12 @@ class HubCloudExtractor : ExtractorApi() {
         callback: (ExtractorLink) -> Unit
     ) {
         val latestUrl = getLatestUrl(url, "hubcloud")
-        val driveUrl = url.replace(getBaseUrl(url), latestUrl)
-        val driveDoc = runCatching { app.get(driveUrl).document }.getOrNull() ?: return
+        // ponytail: posts still link retired hubcloud hosts (.art/.day time out) and the rotation list is gone (404);
+        // the same ids work on these hosts, so try the link's own host first, then these. Update when they rotate.
+        val driveDoc = (listOf(latestUrl) + listOf("https://hubcloud.pw", "https://hubcloud.ist")).distinct().firstNotNullOfOrNull { host ->
+            runCatching { app.get(url.replace(getBaseUrl(url), host)).document }.getOrNull()
+                ?.takeIf { it.selectFirst("#download, a[href*=hubcloud.php], script") != null }
+        } ?: return
 
         // The drive page reveals the "generate" page either through a static #download href
         // (hubcloud.cx) or - on the VegaCloud-branded clone (vcloud.fit) - a

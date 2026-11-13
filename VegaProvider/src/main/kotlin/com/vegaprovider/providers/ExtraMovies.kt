@@ -3,76 +3,96 @@ package com.vegaprovider.providers
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.vegaprovider.core.VegaBase
-import com.vegaprovider.extractors.MobileJsrResolver
+import com.vegaprovider.extractors.MirrorResolver
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
 
 /**
- * ExtraMovies (urls.json key "extra"), extramovies.sarl (vegamovies-style theme). Menu/category links, cards, search and
- * detail captured live 2026-11-13. Download buttons all point at mobilejsr.com/view/<id>, a link protector; see MobileJsrResolver.
+ * ExtraMovies (urls.json key "extra"), extramovies.miami (WP "gridshow" theme). Menu, cards, search, movie and series
+ * posts captured live 2026-11-13. The site's "[18+] Movies" button leaves for extramovies18.pro (401), so it is not listed.
+ * Posts with only elinks.fun buttons (a parked domain-for-sale page) are skipped: nothing resolvable there.
  */
-class ExtraMovies : VegaBase("extra", "https://extramovies.sarl") {
+class ExtraMovies : VegaBase("extra", "https://extramovies.miami") {
     override var name = "ExtraMovies (Vega)"
-    override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.NSFW)
+    override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
-    // Site menu: the top bar (Bollywood, Hindi Dubbed, Hollywood, Dual Audio, Web Series, 18+ Adult) maps onto these category pages.
+    // The site's own menu: Bollywood, Hollywood, South (Hindi Dubbed), Dual Audio, Web Series, Korean Drama.
     override val mainPage = mainPageOf(
         "" to "Latest",
-        "category/hindi-movies" to "Bollywood (Hindi Movies)",
-        "category/hindi-dubbed-movies" to "Hindi Dubbed Movies",
-        "category/english-movies" to "Hollywood (English Movies)",
-        "category/dual-audio-movies" to "Dual Audio Movies",
+        "category/bollywood-movies" to "Bollywood",
+        "category/hollywood-movies" to "Hollywood",
+        "category/south-movies" to "South (Hindi Dubbed)",
+        "category/dual-audio-movies" to "Dual Audio",
         "category/web-series" to "Web Series",
-        "category/tv-shows" to "TV Shows",
-        "category/south-movies" to "South Movies",
-        "category/tamil-movies" to "Tamil Movies",
-        "category/telegu-movies" to "Telegu Movies",
-        "category/malayalam-movies" to "Malayalam Movies",
-        "category/kannada-movies" to "Kannada Movies",
-        "category/bengali-movies" to "Bengali Movies",
-        "category/gujarati-movies" to "Gujarati Movies",
-        "category/marathi-movies" to "Marathi Movies",
-        "category/punjabi-movies" to "Punjabi Movies",
-        "category/chinese-movies" to "Chinese Movies",
-        "category/tagalog-movies" to "Tagalog Movies",
-        "category/18-adult" to "18+ Adult",
-        "category/hot-short-film" to "Hot Short Film",
-        "category/hot-web-series" to "Hot Web Series",
-        "category/uncategorized" to "Uncategorized",
+        "category/korean-drama" to "Korean Drama",
     )
+
+    private val deadHosts = listOf("elinks.fun")
+    private val tvRegex = Regex("""season|\bS\d{1,2}\b|S\d{1,2}E\d|episode|web[ -]?series""", RegexOption.IGNORE_CASE)
+    private val seasonRegex = Regex("""(?:season|\bS)\s*[-–]?\s*0*(\d{1,2})""", RegexOption.IGNORE_CASE)
 
     private suspend fun get(url: String) = app.get(url, headers = mapOf("User-Agent" to UA))
 
-    private fun Element.toCard(type: TvType): SearchResponse? {
-        val href = attr("href").ifBlank { return null }
-        val title = selectFirst(".poster-title")?.text()?.trim()?.ifBlank { null } ?: return null
-        return newMovieSearchResponse(title, href, type) { posterUrl = selectFirst("img")?.attr("src") }
+    private fun clean(t: String) = t.replace("Download", "", ignoreCase = true).trim(' ', '-', '–')
+
+    private fun Element.toCard(): SearchResponse? {
+        val a = selectFirst(".gridshow-grid-post-title a") ?: return null
+        val title = clean(a.text())
+        val type = if (tvRegex.containsMatchIn(title)) TvType.TvSeries else TvType.Movie
+        return newMovieSearchResponse(title, a.attr("href"), type) { posterUrl = selectFirst("img.wp-post-image")?.attr("src") }
     }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         resolveHost()
         val path = if (request.data.isEmpty()) "" else "/${request.data}"
-        val type = if (request.data.contains("18-adult") || request.data.contains("hot-")) TvType.NSFW else TvType.Movie
         val items = get("$mainUrl$path" + if (page > 1) "/page/$page/" else "/").document
-            .select("a:has(.poster-card)").mapNotNull { it.toCard(type) }
+            .select(".gridshow-grid-post").mapNotNull { it.toCard() }
         return newHomePageResponse(request.name, items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
         resolveHost()
         return get("$mainUrl/?s=${URLEncoder.encode(query, "UTF-8")}").document
-            .select("a:has(.poster-card)").mapNotNull { it.toCard(TvType.Movie) }
+            .select(".gridshow-grid-post").mapNotNull { it.toCard() }
+    }
+
+    /** (heading text, button url) pairs in page order; a button belongs to the nearest heading above it. */
+    private fun buttons(doc: org.jsoup.nodes.Document): List<Pair<String, String>> {
+        val out = ArrayList<Pair<String, String>>()
+        var heading = ""
+        doc.select("h2, h3, h4, a.maxbutton-episode").forEach { el ->
+            if (el.tagName() == "a") {
+                val href = el.attr("href")
+                if (deadHosts.none { href.contains(it) } && out.none { it.second == href }) out.add(heading to href)
+            } else el.text().trim().takeIf { it.isNotBlank() }?.let { heading = it }
+        }
+        return out
     }
 
     override suspend fun load(url: String): LoadResponse? {
         resolveHost()
         val doc = get(url).document
-        val title = doc.selectFirst("h1.post-title .material-text, h1.post-title")?.text()?.trim()?.ifBlank { null } ?: return null
-        // ponytail: series posts are shown as one entry; each quality button (label|mobilejsr url) is carried in data.
-        val links = doc.select("a[href*=mobilejsr]").joinToString("\n") { "${it.text().trim()}|${it.attr("href")}" }
-        return newMovieLoadResponse(title, url, TvType.Movie, links) {
-            posterUrl = doc.selectFirst("article img[src*=blogger], .post-body img[src*=blogger]")?.attr("src")
+        val title = clean(doc.selectFirst("h1.post-title")?.text() ?: return null)
+        val links = buttons(doc)
+        if (links.isEmpty()) return null
+        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+        val plot = doc.selectFirst("meta[property=og:description]")?.attr("content")
+        val isTv = tvRegex.containsMatchIn(title) || links.any { tvRegex.containsMatchIn(it.first) }
+
+        if (!isTv) {
+            return newMovieLoadResponse(title, url, TvType.Movie, links.joinToString("\n") { "${it.first}|${it.second}" }) {
+                posterUrl = poster; this.plot = plot
+            }
         }
+        // ponytail: the site only ships season packs (one file per quality, e.g. "Season 1 COMPLETE 720p"), not per-episode
+        // links, so each season is listed as one entry carrying all its qualities.
+        val episodes = links.groupBy { seasonRegex.find(it.first)?.groupValues?.get(1)?.toIntOrNull() ?: 1 }
+            .toSortedMap().map { (season, group) ->
+                newEpisode(group.joinToString("\n") { "${it.first}|${it.second}" }) {
+                    this.season = season; episode = 1; name = "Season $season (full season, choose quality)"
+                }
+            }
+        return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) { posterUrl = poster; this.plot = plot }
     }
 
     override suspend fun loadLinks(
@@ -81,7 +101,7 @@ class ExtraMovies : VegaBase("extra", "https://extramovies.sarl") {
         var any = false
         data.lines().filter { it.isNotBlank() }.forEach { line ->
             val (label, url) = line.split("|", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-            runCatching { MobileJsrResolver.resolve(url, label, subtitleCallback) { any = true; callback(it) } }
+            runCatching { MirrorResolver.resolve(url, label, subtitleCallback) { any = true; callback(it) } }
         }
         return any
     }
