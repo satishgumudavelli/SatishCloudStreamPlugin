@@ -6,6 +6,7 @@ import com.vegaprovider.providers.AnimeWorld
 import com.vegaprovider.providers.AutoEmbed
 import com.vegaprovider.providers.DramaCool
 import com.vegaprovider.providers.ExtraMovies
+import com.vegaprovider.providers.ExtraMoviesSarl
 import com.vegaprovider.providers.Filmyfly
 import com.vegaprovider.providers.FourKHdHub
 import com.vegaprovider.providers.GokuHD
@@ -35,6 +36,7 @@ class VegaProviderPlugin : BasePlugin() {
         registerMainAPI(AutoEmbed())
         registerMainAPI(DramaCool())
         registerMainAPI(ExtraMovies())
+        registerMainAPI(ExtraMoviesSarl())
         registerMainAPI(Filmyfly())
         registerMainAPI(FourKHdHub())
         registerMainAPI(GokuHD())
