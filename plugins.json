@@ -191,10 +191,10 @@
         "name": "VidboxProvider"
     },
     {
-        "fileHash": "sha256-daa4760180aff5cea6f7e77a3e38b677748a3464f8fd9fc8c24a5591e733fde0",
+        "fileHash": "sha256-87de3bd3601004ecf69ae453f80496d4cb7e9b31a2b4262a6d218db59767a544",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 262049,
+        "fileSize": 279339,
         "status": 1,
         "language": "en",
         "authors": [
