@@ -1,0 +1,26 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/ExtraMoviesSarl.kt
+  s_bcf486eafb4d00::t_6c789d0c86b961 46-93
+  s_bcf486eafb4d00::t_69723c1a6eed8b 1-45,94-109
+VegaProvider/src/main/kotlin/com/vegaprovider/VegaProviderPlugin.kt
+  s_bcf486eafb4d00::t_320667fe2cad29 9,39
+VegaProvider/src/main/kotlin/com/vegaprovider/extractors/MobileJsrResolver.kt
+  s_bcf486eafb4d00::t_8feffd5f4bc31a 1-45
+domains.json
+  s_bcf486eafb4d00::t_3a3d29417fd3f7 40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9738ad5c62fbe1b20822b7be0b87cbc5d0ce6df",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
