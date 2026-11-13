@@ -1,0 +1,23 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/extractors/HubCloudExtractor.kt
+  s_bcf486eafb4d00::t_cbaa379749f3fd 42-43
+VegaProvider/src/main/kotlin/com/vegaprovider/extractors/MobileJsrResolver.kt
+  s_bcf486eafb4d00::t_8e7485e72740fd 1-29
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/ExtraMovies.kt
+  s_bcf486eafb4d00::t_bc852a5979cc4e 6,12,80-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b116000b55fbecd0fc9fbedee504eac608973ee",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
