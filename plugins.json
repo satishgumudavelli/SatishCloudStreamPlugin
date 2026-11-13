@@ -189,5 +189,27 @@
         "description": "Vidbox - Movies & TV Shows streaming guide",
         "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/VidboxProvider.cs3",
         "name": "VidboxProvider"
+    },
+    {
+        "fileHash": "sha256-8e45406e14902f58a2c5caa73cdc39c42f54ed4cd7df165fcfd502a2f0c0ebfb",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
+        "fileSize": 261974,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "Satish Gumudavelli"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime",
+            "AsianDrama"
+        ],
+        "version": 1,
+        "internalName": "VegaProvider",
+        "description": "Vega providers bundle - every Vega source in one plugin",
+        "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/VegaProvider.cs3",
+        "name": "VegaProvider"
     }
 ]
