@@ -9,7 +9,7 @@ import org.jsoup.nodes.Element
 
 /** MoviesDrive (urls.json key "drive"). Selectors captured live 2026-11-13. */
 class MoviesDrive : VegaBase("drive", "https://new3.moviesdrive.cyou") {
-    override var name = "MoviesDrive"
+    override var name = "MoviesDrive (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

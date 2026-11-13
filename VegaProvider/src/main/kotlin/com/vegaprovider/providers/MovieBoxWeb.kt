@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 /** MovieBox Web (urls.json key "movieBoxWeb"). Public h5 JSON API + Nuxt SSR detail page; captured live 2026-11-13. */
 class MovieBoxWeb : VegaBase("movieBoxWeb", "https://officialmoviebox.com") {
-    override var name = "MovieBox Web"
+    override var name = "MovieBox Web (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf("" to "Trending", "ONEROOM_MOVIE" to "Movies")

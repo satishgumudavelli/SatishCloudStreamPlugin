@@ -8,7 +8,7 @@ import org.jsoup.nodes.Element
 
 /** katmoviefix (urls.json key "katmoviefix"). Selectors captured live 2026-11-13. Hop: post -> katlinks.in/archives/N -> gdflix/filebee/gofile; some posts link hubcloud.pw directly. */
 class KatMovieFix : VegaBase("katmoviefix", "https://katmoviefix.study") {
-    override var name = "KatMovieFix"
+    override var name = "KatMovieFix (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

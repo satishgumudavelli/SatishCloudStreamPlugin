@@ -9,7 +9,7 @@ import org.jsoup.nodes.Element
 /** skymovieshd (urls.json key "skymovieshd"). Old-school non-WordPress site; selectors captured live 2026-11-13.
  *  Hop: /movie/X.html -> howblogs.xyz/<id> (plain list of hosts) -> hubcloud.pw / gdflix.vip / gofile. */
 class SkyMovieHD : VegaBase("skymovieshd", "https://new4.skymovieshd.clinic") {
-    override var name = "SkyMoviesHD"
+    override var name = "SkyMoviesHD (Vega)"
     override val supportedTypes = setOf(TvType.Movie)
 
     override val mainPage = mainPageOf(

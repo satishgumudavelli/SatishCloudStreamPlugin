@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 /** hdhub4u (urls.json key "hdhub"). Selectors captured live 2026-11-13. */
 class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
-    override var name = "HDHub4u"
+    override var name = "HDHub4u (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

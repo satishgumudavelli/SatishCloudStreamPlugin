@@ -11,7 +11,7 @@ import java.net.URLEncoder
 
 /** animeworld (urls.json key "animeworld"). WordPress/DooPlay site; players are play.zephyrix.org HLS; captured live 2026-11-13. */
 class AnimeWorld : VegaBase("animeworld", "https://watchanimeworld.one") {
-    override var name = "AnimeWorld"
+    override var name = "AnimeWorld (Vega)"
     override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie)
 
     override val mainPage = mainPageOf(

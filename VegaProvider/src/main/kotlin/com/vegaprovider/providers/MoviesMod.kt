@@ -8,7 +8,7 @@ import org.jsoup.nodes.Element
 
 /** MoviesMod (urls.json key "Moviesmod"). Selectors/chain captured live 2026-11-13. */
 class MoviesMod : VegaBase("Moviesmod", "https://moviesmod.tw") {
-    override var name = "MoviesMod"
+    override var name = "MoviesMod (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

@@ -9,7 +9,7 @@ import java.net.URLEncoder
 
 /** moviezwap (urls.json key "moviezwap"). Old-school WAP markup, captured live 2026-11-13. TLS resets sometimes: retried once. */
 class Moviezwap : VegaBase("moviezwap", "https://www.moviezwap.moe") {
-    override var name = "Moviezwap"
+    override var name = "Moviezwap (Vega)"
     override val supportedTypes = setOf(TvType.Movie)
 
     override val mainPage = mainPageOf(

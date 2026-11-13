@@ -12,7 +12,7 @@ import java.net.URLEncoder
  * urls.json key "cinevood" points at this same site, so no separate provider.
  */
 class KmMovies : VegaBase("kmmovies", "https://kmmovies.beer") {
-    override var name = "KMMovies"
+    override var name = "KMMovies (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

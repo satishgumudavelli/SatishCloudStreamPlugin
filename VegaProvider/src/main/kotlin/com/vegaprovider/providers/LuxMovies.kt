@@ -9,7 +9,7 @@ import org.jsoup.nodes.Element
 
 /** luxmovies / rogmovies (urls.json key "lux"). Vegamovies clone; selectors captured live 2026-11-13. */
 class LuxMovies : VegaBase("lux", "https://rogmovies.autos") {
-    override var name = "LuxMovies"
+    override var name = "LuxMovies (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

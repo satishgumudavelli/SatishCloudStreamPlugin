@@ -11,7 +11,7 @@ import java.net.URLEncoder
 
 /** zeefliz (urls.json key "zeefliz"). WordPress + nexdrive.store link pages; selectors captured live 2026-11-13. */
 class Zeefliz : VegaBase("zeefliz", "https://zeefliz1.xyz") {
-    override var name = "Zeefliz"
+    override var name = "Zeefliz (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

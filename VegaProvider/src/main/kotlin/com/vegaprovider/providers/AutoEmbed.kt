@@ -19,7 +19,7 @@ import android.util.Base64
  * ponytail: cinejoy and vidstuck extractors from the TS are not ported (unverified); only movy.
  */
 class AutoEmbed : VegaBase("autoembed", "https://v3-cinemeta.strem.io") {
-    override var name = "AutoEmbed"
+    override var name = "AutoEmbed (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

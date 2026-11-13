@@ -10,7 +10,7 @@ import java.net.URLEncoder
 
 /** multimovies (urls.json key "multi"). Site is now a TMDB-id embed aggregator; selectors captured live 2026-11-13. */
 class MultiMovies : VegaBase("multi", "https://m1.multimovies.courses") {
-    override var name = "MultiMovies"
+    override var name = "MultiMovies (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

@@ -10,7 +10,7 @@ import java.net.URLEncoder
 
 /** 4khdhub (urls.json key "4khdhub"). Selectors captured live 2026-11-13. */
 class FourKHdHub : VegaBase("4khdhub", "https://4khdhub.one") {
-    override var name = "4KHDHub"
+    override var name = "4KHDHub (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

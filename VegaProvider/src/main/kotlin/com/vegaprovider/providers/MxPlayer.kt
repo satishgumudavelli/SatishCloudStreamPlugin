@@ -11,7 +11,7 @@ import java.util.UUID
 
 /** mxplayer (urls.json key "mxplayer"). Public api.mxplayer.in JSON (needs any userid + JSON content-type); captured live 2026-11-13. */
 class MxPlayer : VegaBase("mxplayer", "https://www.mxplayer.in") {
-    override var name = "MX Player"
+    override var name = "MX Player (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

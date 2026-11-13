@@ -12,7 +12,7 @@ import java.net.URLEncoder
 
 /** MovieLinkBD (urls.json keys "movielinkdb"/"movielinkbd"). Selectors captured live 2026-11-13. */
 class MovieLinkDb : VegaBase("movielinkdb", "https://ex5wfv.movielinkbd.li") {
-    override var name = "MovieLinkDb"
+    override var name = "MovieLinkDb (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

@@ -8,7 +8,7 @@ import org.jsoup.nodes.Element
 
 /** UHDMovies (urls.json key "UhdMovies"). Selectors/chain captured live 2026-11-13. */
 class UhdMovies : VegaBase("UhdMovies", "https://uhdmovies.beauty") {
-    override var name = "UhdMovies"
+    override var name = "UhdMovies (Vega)"
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries)
 
     override val mainPage = mainPageOf(

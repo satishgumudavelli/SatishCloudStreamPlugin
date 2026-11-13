@@ -14,7 +14,7 @@ import javax.crypto.spec.SecretKeySpec
 
 /** dramacool (urls.json key "dramacool"; "asianc" is the same site). Selectors/stream hop captured live 2026-11-13. */
 class DramaCool : VegaBase("dramacool", "https://asianc.id") {
-    override var name = "DramaCool"
+    override var name = "DramaCool (Vega)"
     override val supportedTypes = setOf(TvType.AsianDrama, TvType.Movie)
 
     override val mainPage = mainPageOf(

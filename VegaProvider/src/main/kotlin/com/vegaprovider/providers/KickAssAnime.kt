@@ -9,7 +9,7 @@ import org.json.JSONObject
 
 /** kickAssAnime (urls.json key "kickAssAnime"). JSON API under /api, krussdomi cat-player HLS; captured live 2026-11-13. */
 class KickAssAnime : VegaBase("kickAssAnime", "https://kaa.lt") {
-    override var name = "KickAssAnime"
+    override var name = "KickAssAnime (Vega)"
     override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie)
 
     override val mainPage = mainPageOf(
