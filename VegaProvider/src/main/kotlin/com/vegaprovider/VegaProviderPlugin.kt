@@ -5,6 +5,8 @@ import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.vegaprovider.providers.AnimeWorld
 import com.vegaprovider.providers.AutoEmbed
 import com.vegaprovider.providers.DramaCool
+import com.vegaprovider.providers.ExtraMovies
+import com.vegaprovider.providers.Filmyfly
 import com.vegaprovider.providers.FourKHdHub
 import com.vegaprovider.providers.GokuHD
 import com.vegaprovider.providers.Hdhub4u
@@ -21,6 +23,7 @@ import com.vegaprovider.providers.Moviezwap
 import com.vegaprovider.providers.MultiMovies
 import com.vegaprovider.providers.MxPlayer
 import com.vegaprovider.providers.SkyMovieHD
+import com.vegaprovider.providers.Topmovies
 import com.vegaprovider.providers.UhdMovies
 import com.vegaprovider.providers.Vega
 import com.vegaprovider.providers.Zeefliz
@@ -31,6 +34,8 @@ class VegaProviderPlugin : BasePlugin() {
         registerMainAPI(AnimeWorld())
         registerMainAPI(AutoEmbed())
         registerMainAPI(DramaCool())
+        registerMainAPI(ExtraMovies())
+        registerMainAPI(Filmyfly())
         registerMainAPI(FourKHdHub())
         registerMainAPI(GokuHD())
         registerMainAPI(Hdhub4u())
@@ -47,6 +52,7 @@ class VegaProviderPlugin : BasePlugin() {
         registerMainAPI(MultiMovies())
         registerMainAPI(MxPlayer())
         registerMainAPI(SkyMovieHD())
+        registerMainAPI(Topmovies())
         registerMainAPI(UhdMovies())
         registerMainAPI(Vega())
         registerMainAPI(Zeefliz())

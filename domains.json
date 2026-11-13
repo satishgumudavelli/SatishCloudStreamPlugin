@@ -34,6 +34,9 @@
     { "name": "movielinkdb", "domain": "ex5wfv.movielinkbd.li" },
     { "name": "mxplayer", "domain": "www.mxplayer.in" },
     { "name": "dramacool", "domain": "asianc.id" },
-    { "name": "autoembed", "domain": "v3-cinemeta.strem.io" }
+    { "name": "autoembed", "domain": "v3-cinemeta.strem.io" },
+    { "name": "Topmovies", "domain": "moviesleech.media" },
+    { "name": "filmyfly", "domain": "filmyfly.ong" },
+    { "name": "extra", "domain": "extramovies.miami" }
   ]
 }
