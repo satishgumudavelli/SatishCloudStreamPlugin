@@ -75,26 +75,32 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
 
         // series: after a "Single Episode" heading, links appear per episode/quality in page order.
         // ponytail: episode number = nth occurrence of that quality unless an "Episode N" heading says otherwise.
-        val eps = sortedMapOf<Int, MutableList<String>>()
-        val counters = HashMap<String, Int>()
-        var inSingle = false; var curEp = 0; var q = ""
-        c.select("h2,h3,h4,h5,a[href]").forEach { el ->
-            if (el.tagName() != "a") {
-                val t = el.ownText().ifBlank { el.text() }.replace(Regex("""\s+"""), " ").trim()
-                if (el.tagName() == "h2" || el.tagName() == "h3") {
-                    if (Regex("""(?i)single episode|episode.*(links|index)""").containsMatchIn(t)) { inSingle = true; curEp = 0; counters.clear() }
-                    else if (Regex("""(?i)storyline|review|description""").containsMatchIn(t)) inSingle = false
+        fun collect(startInSingle: Boolean): java.util.SortedMap<Int, MutableList<String>> {
+            val eps = sortedMapOf<Int, MutableList<String>>()
+            val counters = HashMap<String, Int>()
+            var inSingle = startInSingle; var curEp = 0; var q = ""
+            c.select("h2,h3,h4,h5,a[href]").forEach { el ->
+                if (el.tagName() != "a") {
+                    val t = el.ownText().ifBlank { el.text() }.replace(Regex("""\s+"""), " ").trim()
+                    if (el.tagName() == "h2" || el.tagName() == "h3") {
+                        if (Regex("""(?i)single episode|episode.*(links|index)""").containsMatchIn(t)) { inSingle = true; curEp = 0; counters.clear() }
+                        else if (Regex("""(?i)storyline|review|description""").containsMatchIn(t)) inSingle = false
+                    }
+                    epRe.find(t)?.let { curEp = it.groupValues[1].toInt() }
+                    quality(t).takeIf { it.isNotEmpty() }?.let { q = it }
+                    return@forEach
                 }
-                epRe.find(t)?.let { curEp = it.groupValues[1].toInt() }
-                quality(t).takeIf { it.isNotEmpty() }?.let { q = it }
-                return@forEach
+                val href = el.attr("href")
+                if (!inSingle || !isHost(href)) return@forEach
+                val ql = quality(el.text()).ifEmpty { q }
+                val ep = if (curEp > 0) curEp else (counters[ql] ?: 0).plus(1).also { counters[ql] = it }
+                eps.getOrPut(ep) { mutableListOf() }.add("${ql.ifEmpty { "Unknown" }}|${abs(href)}")
             }
-            val href = el.attr("href")
-            if (!inSingle || !isHost(href)) return@forEach
-            val ql = quality(el.text()).ifEmpty { q }
-            val ep = if (curEp > 0) curEp else (counters[ql] ?: 0).plus(1).also { counters[ql] = it }
-            eps.getOrPut(ep) { mutableListOf() }.add("${ql.ifEmpty { "Unknown" }}|${abs(href)}")
+            return eps
         }
+        // Some posts (e.g. "India's Got Latent") have no "Single Episode" heading: one "EPiSODE N | WATCH" row per episode
+        // under "DOWNLOAD LINKS", whose EPiSODE link is the greenmotors short link. Retry treating the whole body as the list.
+        val eps = collect(false).ifEmpty { if (seriesRe.containsMatchIn(raw)) collect(true) else collect(false) }
         if (eps.isNotEmpty() || seriesRe.containsMatchIn(raw)) {
             if (eps.isEmpty()) return null
             val episodes = eps.map { (n, v) -> newEpisode(v.distinct().joinToString("\n")) { name = "Episode $n"; season = 1; episode = n } }
@@ -114,8 +120,17 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
                 ?.attr("href")?.let { resolveHop(it, label, sub, cb, depth + 1) }
             GreenMotorsDecoder.isShort(link) -> GreenMotorsDecoder.decode(app.get(link, headers = h).text)
                 ?.let { resolveHop(it, label, sub, cb, depth + 1) }
-            link.contains("hblinks") -> app.get(link, headers = h).document.select("a[href]").map { it.attr("href") }
-                .firstOrNull { it.contains("hubcloud") }?.let { resolveHop(it, label, sub, cb, depth + 1) }
+            // hblinks episode/file page: one heading per quality ("480p - Drive | Instant | Direct"); "Direct" is the hubcloud link.
+            link.contains("hblinks") -> {
+                val doc = app.get(link, headers = h).document
+                val rows = doc.select("h3, h4, h5").filter { r -> r.select("a[href*=hubcloud]").isNotEmpty() }
+                if (rows.isEmpty()) doc.select("a[href]").map { it.attr("href") }.firstOrNull { it.contains("hubcloud") }
+                    ?.let { resolveHop(it, label, sub, cb, depth + 1) }
+                else rows.forEach { r ->
+                    val ql = r.text().substringBefore("–").substringBefore("Drive").trim().ifBlank { label }
+                    resolveHop(r.selectFirst("a[href*=hubcloud]")!!.attr("href"), ql, sub, cb, depth + 1)
+                }
+            }
         }
     }
 
