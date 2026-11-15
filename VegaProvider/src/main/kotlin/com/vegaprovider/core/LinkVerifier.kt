@@ -18,7 +18,7 @@ object LinkVerifier {
     private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     private const val TIMEOUT_SEC = 10L
 
-    private suspend fun isPlayable(l: ExtractorLink): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isPlayable(l: ExtractorLink): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val rb = Request.Builder().url(l.url)
             l.headers.forEach { (k, v) -> rb.header(k, v) }

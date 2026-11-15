@@ -21,7 +21,7 @@ object PlaydriveResolver {
     fun isPlaydrive(url: String) = url.contains("playdrive.")
 
     suspend fun resolve(embedUrl: String, label: String, referer: String, callback: (ExtractorLink) -> Unit) {
-        val resolver = WebViewResolver(interceptUrl = range, useOkhttp = false, script = CLICK, timeout = 25_000L)
+        val resolver = WebViewResolver(interceptUrl = range, useOkhttp = false, script = CLICK, timeout = 15_000L)
         val master = resolver.resolveUsingWebView(embedUrl, referer).first?.url?.toString() ?: return
         callback(newExtractorLink("Playdrive", "Playdrive $label", master, ExtractorLinkType.M3U8) { this.referer = SITE })
     }

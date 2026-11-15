@@ -1,4 +1,4 @@
-version = 5
+version = 6
 
 cloudstream {
     description = "Vega providers bundle - every Vega source in one plugin"

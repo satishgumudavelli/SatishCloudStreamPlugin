@@ -14,6 +14,10 @@ import com.vegaprovider.extractors.GreenMotorsDecoder
 import com.vegaprovider.extractors.MirrorResolver
 import com.vegaprovider.extractors.PlaydriveResolver
 import com.vegaprovider.extractors.VidaraResolver
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
@@ -158,9 +162,9 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
                 val rows = doc.select("h3, h4, h5").filter { r -> r.select("a[href*=hubcloud], a[href*=hubcdn]").isNotEmpty() }
                 if (rows.isEmpty()) doc.select("a[href]").map { it.attr("href") }.firstOrNull { it.contains("hubcloud") }
                     ?.let { resolveHop(it, label, sub, cb, depth + 1) }
-                else rows.forEach { r ->
+                else rows.amap { r ->
                     val ql = r.text().substringBefore("–").substringBefore("Drive").trim().ifBlank { label }
-                    r.select("a[href*=hubcloud], a[href*=hubcdn]").forEach { a -> resolveHop(a.attr("href"), ql, sub, cb, depth + 1) }
+                    r.select("a[href*=hubcloud], a[href*=hubcdn]").amap { a -> resolveHop(a.attr("href"), ql, sub, cb, depth + 1) }
                 }
             }
             // any other embed host (e.g. what hubstream resolves to): built-in extractors take it if they know the host
@@ -175,13 +179,22 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
     override suspend fun loadLinks(
         data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        // Resolve every source in parallel, then keep only the ones that answer right now (LinkVerifier), so dead
-        // servers never show up and the working ones (download or watch) are what the player gets.
+        // Stream results: every source resolves in parallel and each link is emitted as soon as it passes its own quick
+        // reachability check, so a slow source (the playdrive WebView) only delays itself, never the others.
         val found = java.util.Collections.synchronizedList(ArrayList<ExtractorLink>())
-        data.lines().filter { it.contains("|") }.amap { l ->
-            runCatching { resolveHop(l.substringAfter("|"), l.substringBefore("|"), subtitleCallback, { found.add(it) }) }
+        val lock = Any()
+        var emitted = false
+        coroutineScope {
+            val cb: (ExtractorLink) -> Unit = { l ->
+                found.add(l)
+                launch { if (LinkVerifier.isPlayable(l)) synchronized(lock) { emitted = true; callback(l) } }
+            }
+            data.lines().filter { it.contains("|") }.map { l ->
+                async { runCatching { resolveHop(l.substringAfter("|"), l.substringBefore("|"), subtitleCallback, cb) } }
+            }.awaitAll()
         }
-        LinkVerifier.verified(found.toList()).forEach(callback)
+        // ponytail: if every link failed the check, show them all anyway so a false negative never hides every source
+        if (!emitted) found.toList().forEach(callback)
         return found.isNotEmpty()
     }
 }
