@@ -2,7 +2,10 @@ package com.vegaprovider.providers
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
+import com.vegaprovider.core.LinkVerifier
 import com.vegaprovider.core.VegaBase
+import com.vegaprovider.extractors.GenericEmbed
 import com.vegaprovider.extractors.GreenMotorsDecoder
 import com.vegaprovider.extractors.MirrorResolver
 import com.vegaprovider.extractors.VidaraResolver
@@ -62,7 +65,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
 
     private fun quality(t: String) = Regex("""(?i)\b(480|720|1080|2160)p\b|\b4k\b""").find(t)?.value ?: ""
     private val epRe = Regex("""(?i)^(?:episodes?\s*[:.-]?\s*|E)(\d+)\b""")
-    private fun isHost(href: String) = href.contains("hubdrive") || href.contains("hubcloud") || GreenMotorsDecoder.isShort(href) || VidaraResolver.isVidara(href)
+    private fun isHost(href: String) = href.contains("hubdrive") || href.contains("hubcloud") || GreenMotorsDecoder.isShort(href) || VidaraResolver.isVidara(href) || href.contains("hubstream.")
 
     override suspend fun load(url: String): LoadResponse? {
         resolveHost()
@@ -76,10 +79,13 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
 
         // series: after a "Single Episode" heading, links appear per episode/quality in page order.
         // ponytail: episode number = nth occurrence of that quality unless an "Episode N" heading says otherwise.
+        // bonus rows ("BONUS EP 1", "BONUS CLiP OF EP04") carry no episode number; give each its own entry instead of letting
+        // them inherit the previous episode and show up as extra "qualities" of it.
+        val epNames = HashMap<Int, String>()
         fun collect(startInSingle: Boolean): java.util.SortedMap<Int, MutableList<String>> {
             val eps = sortedMapOf<Int, MutableList<String>>()
             val counters = HashMap<String, Int>()
-            var inSingle = startInSingle; var curEp = 0; var q = ""
+            var inSingle = startInSingle; var curEp = 0; var q = ""; var bonusIdx = 0
             c.select("h2,h3,h4,h5,a[href]").forEach { el ->
                 if (el.tagName() != "a") {
                     val t = el.ownText().ifBlank { el.text() }.replace(Regex("""\s+"""), " ").trim()
@@ -87,15 +93,18 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
                         if (Regex("""(?i)single episode|episode.*(links|index)""").containsMatchIn(t)) { inSingle = true; curEp = 0; counters.clear() }
                         else if (Regex("""(?i)storyline|review|description""").containsMatchIn(t)) inSingle = false
                     }
-                    epRe.find(t)?.let { curEp = it.groupValues[1].toInt() }
+                    if (Regex("""(?i)\bbonus\b""").containsMatchIn(t)) { curEp = 100 + ++bonusIdx; epNames[curEp] = t.take(50) }
+                    else epRe.find(t)?.let { curEp = it.groupValues[1].toInt() }
                     quality(t).takeIf { it.isNotEmpty() }?.let { q = it }
                     return@forEach
                 }
                 val href = el.attr("href")
-                if (!inSingle || !isHost(href)) return@forEach
+                // a "WATCH" anchor is an embed link on any host; everything else must be a known download host
+                val isWatch = Regex("""(?i)^\s*watch""").containsMatchIn(el.text())
+                if (!inSingle || !(isHost(href) || isWatch)) return@forEach
                 val ql = quality(el.text()).ifEmpty { q }
                 val ep = if (curEp > 0) curEp else (counters[ql] ?: 0).plus(1).also { counters[ql] = it }
-                eps.getOrPut(ep) { mutableListOf() }.add("${if (VidaraResolver.isVidara(href)) "Watch" else ql.ifEmpty { "Unknown" }}|${abs(href)}")
+                eps.getOrPut(ep) { mutableListOf() }.add("${if (isWatch || VidaraResolver.isVidara(href) || href.contains("hubstream.")) "Watch" else ql.ifEmpty { "Unknown" }}|${abs(href)}")
             }
             return eps
         }
@@ -104,7 +113,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
         val eps = collect(false).ifEmpty { if (seriesRe.containsMatchIn(raw)) collect(true) else collect(false) }
         if (eps.isNotEmpty() || seriesRe.containsMatchIn(raw)) {
             if (eps.isEmpty()) return null
-            val episodes = eps.map { (n, v) -> newEpisode(v.distinct().joinToString("\n")) { name = "Episode $n"; season = 1; episode = n } }
+            val episodes = eps.map { (n, v) -> newEpisode(v.distinct().joinToString("\n")) { name = epNames[n] ?: "Episode $n"; season = 1; episode = n } }
             return newTvSeriesLoadResponse(title, url, TvType.TvSeries, episodes) { posterUrl = poster; this.year = year }
         }
         val data = c.select("a[href]").filter { isHost(it.attr("href")) && quality(it.text()).isNotEmpty() }
@@ -117,6 +126,11 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
         if (depth > 3) return
         when {
             VidaraResolver.isVidara(link) -> VidaraResolver.resolve(link, label, sub, cb)
+            // hubstream.art/#<id> is a thin redirector: its public resolve api returns the real embed (vidara, turboembed, ...)
+            link.contains("hubstream.") -> link.substringAfter("#", "").takeIf { it.isNotBlank() }?.let { id ->
+                JSONObject(app.get("https://hubstream.art/api/public/resolve?file1=$id", headers = h).text).optString("url")
+                    .takeIf { it.startsWith("http") }?.let { resolveHop(it, label, sub, cb, depth + 1) }
+            }
             link.contains("hubcloud") -> MirrorResolver.resolve(link, label, sub, cb)
             link.contains("hubdrive") -> app.get(link, headers = h).document.selectFirst("a.btn-success1[href]")
                 ?.attr("href")?.let { resolveHop(it, label, sub, cb, depth + 1) }
@@ -133,17 +147,25 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
                     resolveHop(r.selectFirst("a[href*=hubcloud]")!!.attr("href"), ql, sub, cb, depth + 1)
                 }
             }
+            // any other embed host (e.g. what hubstream resolves to): built-in extractors take it if they know the host
+            else -> {
+                var got = false
+                runCatching { loadExtractor(link, "$mainUrl/", sub) { got = true; cb(it) } }
+                if (!got) runCatching { GenericEmbed.resolve(link, label, "$mainUrl/", cb) }
+            }
         }
     }
 
     override suspend fun loadLinks(
         data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
     ): Boolean {
-        var any = false
-        val cb: (ExtractorLink) -> Unit = { any = true; callback(it) }
-        for (l in data.lines().filter { it.contains("|") }) {
-            runCatching { resolveHop(l.substringAfter("|"), l.substringBefore("|"), subtitleCallback, cb) }
+        // Resolve every source in parallel, then keep only the ones that answer right now (LinkVerifier), so dead
+        // servers never show up and the working ones (download or watch) are what the player gets.
+        val found = java.util.Collections.synchronizedList(ArrayList<ExtractorLink>())
+        data.lines().filter { it.contains("|") }.amap { l ->
+            runCatching { resolveHop(l.substringAfter("|"), l.substringBefore("|"), subtitleCallback, { found.add(it) }) }
         }
-        return any
+        LinkVerifier.verified(found.toList()).forEach(callback)
+        return found.isNotEmpty()
     }
 }
