@@ -1,0 +1,25 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/LuxMovies.kt
+  s_bcf486eafb4d00::t_3a01d5cdfbfdef 5,8,13,68-75,88-107,112-124,127-140
+domains.json
+  s_bcf486eafb4d00::t_3a01d5cdfbfdef 19
+VegaProvider/src/main/kotlin/com/vegaprovider/core/LinkStreamer.kt
+  s_bcf486eafb4d00::t_cae050ba2bbb41 1-33
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Hdhub4u.kt
+  s_bcf486eafb4d00::t_50665202b4410d 10,177-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2444111876ebb6ab754d8ecc3644d82069ea408d",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
