@@ -1,0 +1,25 @@
+VegaProvider/build.gradle.kts
+  s_bcf486eafb4d00::t_6b3488e752f0c0 1
+VegaProvider/src/main/kotlin/com/vegaprovider/extractors/PlaydriveResolver.kt
+  s_bcf486eafb4d00::t_936fc52b5cf885 24
+VegaProvider/src/main/kotlin/com/vegaprovider/core/LinkVerifier.kt
+  s_bcf486eafb4d00::t_936fc52b5cf885 21
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Hdhub4u.kt
+  s_bcf486eafb4d00::t_936fc52b5cf885 17-20,165,167,182-183,185-194,196-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3460eff2a2f1e269e1e2ed5de3ad1fbf07498186",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
