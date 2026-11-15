@@ -191,10 +191,10 @@
         "name": "VidboxProvider"
     },
     {
-        "fileHash": "sha256-e780166404cddc8dbb3525aff415dced64a5924e182e2c8d114151d7c6aae883",
+        "fileHash": "sha256-bb8011068d2c83b35d4ca1044087aabde0197d1937215a82bf361652a537746c",
         "apiVersion": 1,
         "repositoryUrl": "https://github.com/satishgumudavelli/SatishCloudStreamPlugin",
-        "fileSize": 299471,
+        "fileSize": 303857,
         "status": 1,
         "language": "en",
         "authors": [
@@ -206,7 +206,7 @@
             "Anime",
             "AsianDrama"
         ],
-        "version": 1,
+        "version": 2,
         "internalName": "VegaProvider",
         "description": "Vega providers bundle - every Vega source in one plugin",
         "url": "https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/builds/VegaProvider.cs3",
