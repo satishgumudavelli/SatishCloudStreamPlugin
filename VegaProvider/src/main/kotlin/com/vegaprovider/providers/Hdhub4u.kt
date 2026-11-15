@@ -2,7 +2,11 @@ package com.vegaprovider.providers
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.vegaprovider.extractors.isZipUrl
 import com.vegaprovider.core.LinkVerifier
 import com.vegaprovider.core.VegaBase
 import com.vegaprovider.extractors.GenericEmbed
@@ -65,7 +69,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
 
     private fun quality(t: String) = Regex("""(?i)\b(480|720|1080|2160)p\b|\b4k\b""").find(t)?.value ?: ""
     private val epRe = Regex("""(?i)^(?:episodes?\s*[:.-]?\s*|E)(\d+)\b""")
-    private fun isHost(href: String) = href.contains("hubdrive") || href.contains("hubcloud") || GreenMotorsDecoder.isShort(href) || VidaraResolver.isVidara(href) || href.contains("hubstream.")
+    private fun isHost(href: String) = href.contains("hubdrive") || href.contains("hubcloud") || GreenMotorsDecoder.isShort(href) || VidaraResolver.isVidara(href) || href.contains("hubstream.") || href.contains("hubcdn.")
 
     override suspend fun load(url: String): LoadResponse? {
         resolveHost()
@@ -131,6 +135,16 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
                 JSONObject(app.get("https://hubstream.art/api/public/resolve?file1=$id", headers = h).text).optString("url")
                     .takeIf { it.startsWith("http") }?.let { resolveHop(it, label, sub, cb, depth + 1) }
             }
+            // hubcdn "Instant": redirect page with var reurl = "...?r=<b64(https://hubcdn.club/dl/?link=<r2.dev mkv>)>" (verified 2026-11-15,
+            // the r2.dev file answers range requests).
+            link.contains("hubcdn.") -> {
+                val reurl = Regex("""var reurl\s*=\s*"([^"]+)"""").find(app.get(link, headers = h).text)?.groupValues?.get(1)
+                val r = reurl?.substringAfter("?r=", "")?.substringBefore("&")?.takeIf { it.isNotBlank() }
+                val decoded = r?.let { runCatching { String(java.util.Base64.getDecoder().decode(java.net.URLDecoder.decode(it, "UTF-8"))) }.getOrNull() }
+                decoded?.substringAfter("link=", "")?.takeIf { it.startsWith("http") && !isZipUrl(it) }?.let { final ->
+                    cb(newExtractorLink("HubCDN", "HubCDN $label", final, ExtractorLinkType.VIDEO) { quality = getQualityFromName(label) })
+                }
+            }
             link.contains("hubcloud") -> MirrorResolver.resolve(link, label, sub, cb)
             link.contains("hubdrive") -> app.get(link, headers = h).document.selectFirst("a.btn-success1[href]")
                 ?.attr("href")?.let { resolveHop(it, label, sub, cb, depth + 1) }
@@ -139,12 +153,12 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
             // hblinks episode/file page: one heading per quality ("480p - Drive | Instant | Direct"); "Direct" is the hubcloud link.
             link.contains("hblinks") -> {
                 val doc = app.get(link, headers = h).document
-                val rows = doc.select("h3, h4, h5").filter { r -> r.select("a[href*=hubcloud]").isNotEmpty() }
+                val rows = doc.select("h3, h4, h5").filter { r -> r.select("a[href*=hubcloud], a[href*=hubcdn]").isNotEmpty() }
                 if (rows.isEmpty()) doc.select("a[href]").map { it.attr("href") }.firstOrNull { it.contains("hubcloud") }
                     ?.let { resolveHop(it, label, sub, cb, depth + 1) }
                 else rows.forEach { r ->
                     val ql = r.text().substringBefore("–").substringBefore("Drive").trim().ifBlank { label }
-                    resolveHop(r.selectFirst("a[href*=hubcloud]")!!.attr("href"), ql, sub, cb, depth + 1)
+                    r.select("a[href*=hubcloud], a[href*=hubcdn]").forEach { a -> resolveHop(a.attr("href"), ql, sub, cb, depth + 1) }
                 }
             }
             // any other embed host (e.g. what hubstream resolves to): built-in extractors take it if they know the host
