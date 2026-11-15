@@ -7,17 +7,13 @@ import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.vegaprovider.extractors.isZipUrl
-import com.vegaprovider.core.LinkVerifier
+import com.vegaprovider.core.LinkStreamer
 import com.vegaprovider.core.VegaBase
 import com.vegaprovider.extractors.GenericEmbed
 import com.vegaprovider.extractors.GreenMotorsDecoder
 import com.vegaprovider.extractors.MirrorResolver
 import com.vegaprovider.extractors.PlaydriveResolver
 import com.vegaprovider.extractors.VidaraResolver
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
@@ -178,23 +174,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
 
     override suspend fun loadLinks(
         data: String, isCasting: Boolean, subtitleCallback: (SubtitleFile) -> Unit, callback: (ExtractorLink) -> Unit,
-    ): Boolean {
-        // Stream results: every source resolves in parallel and each link is emitted as soon as it passes its own quick
-        // reachability check, so a slow source (the playdrive WebView) only delays itself, never the others.
-        val found = java.util.Collections.synchronizedList(ArrayList<ExtractorLink>())
-        val lock = Any()
-        var emitted = false
-        coroutineScope {
-            val cb: (ExtractorLink) -> Unit = { l ->
-                found.add(l)
-                launch { if (LinkVerifier.isPlayable(l)) synchronized(lock) { emitted = true; callback(l) } }
-            }
-            data.lines().filter { it.contains("|") }.map { l ->
-                async { runCatching { resolveHop(l.substringAfter("|"), l.substringBefore("|"), subtitleCallback, cb) } }
-            }.awaitAll()
-        }
-        // ponytail: if every link failed the check, show them all anyway so a false negative never hides every source
-        if (!emitted) found.toList().forEach(callback)
-        return found.isNotEmpty()
+    ): Boolean = LinkStreamer.stream(data.lines().filter { it.contains("|") }, callback) { l, cb ->
+        resolveHop(l.substringAfter("|"), l.substringBefore("|"), subtitleCallback, cb)
     }
 }
