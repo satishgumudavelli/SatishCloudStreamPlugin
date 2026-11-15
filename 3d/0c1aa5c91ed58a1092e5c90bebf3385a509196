@@ -1,0 +1,27 @@
+VegaProvider/src/main/kotlin/com/vegaprovider/core/LinkVerifier.kt
+  s_bcf486eafb4d00::t_f2022b484d88d1 1-41
+VegaProvider/build.gradle.kts
+  s_bcf486eafb4d00::t_efae5121cfaeb1 1
+VegaProvider/src/main/kotlin/com/vegaprovider/providers/Hdhub4u.kt
+  s_bcf486eafb4d00::t_15994886c15c5d 166
+  s_bcf486eafb4d00::t_85b5fe652c548f 133,150,155,162-165,168-169
+  s_bcf486eafb4d00::t_b1264d7c3536a6 5-6,8,68,82-84,88,96-97,102-104,107,116,129-132,151-154
+VegaProvider/src/main/kotlin/com/vegaprovider/extractors/GenericEmbed.kt
+  s_bcf486eafb4d00::t_9881d78aa2efa3 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d0c1aa5c91ed58a1092e5c90bebf3385a509196",
+  "prompts": {},
+  "sessions": {
+    "s_bcf486eafb4d00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0003df4-9f37-4f4e-bb39-3dc86866c4e3",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
