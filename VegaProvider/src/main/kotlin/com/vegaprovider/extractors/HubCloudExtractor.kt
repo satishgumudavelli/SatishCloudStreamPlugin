@@ -7,6 +7,7 @@ import com.lagradost.cloudstream3.utils.ExtractorApi
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.newExtractorLink
+import com.lagradost.cloudstream3.utils.loadExtractor
 
 // Adapted from the reference implementation (MoviesDrive's Extractors.kt), with two fixes found
 // by checking it against a real movies4u.ag capture (research.md Decisions 1-2 of feature
@@ -78,10 +79,32 @@ class HubCloudExtractor : ExtractorApi() {
             }
 
             if (label.contains("Server : 10Gbps", ignoreCase = true) || label.contains("10Gbps", ignoreCase = true)) {
-                val dlink = runCatching { app.get(href, allowRedirects = false).headers["location"] }.getOrNull().orEmpty()
+                // verified 2026-11-15: gpdl.hubcloud.pw -> *.workers.dev -> cryptonewz.online/dl.php?link=<googleusercontent mkv>;
+                // follow redirects by hand (never download the body) until a Location carries link=.
+                var cur = href
+                var dlink = ""
+                for (hop in 0 until 5) {
+                    val loc = runCatching { app.get(cur, allowRedirects = false).headers["location"] }.getOrNull()
+                    if (loc.isNullOrEmpty()) break
+                    cur = if (loc.startsWith("http")) loc else java.net.URI(cur).resolve(loc).toString()
+                    dlink = cur
+                    if (loc.contains("link=")) break
+                }
                 val finalUrl = if (dlink.contains("link=")) dlink.substringAfter("link=") else dlink
                 if (finalUrl.isNotEmpty() && !isZipUrl(finalUrl)) {
                     emit(callback, name, label, header, size, finalUrl, baseQuality)
+                }
+                return@forEach
+            }
+
+            // 2026-11-15: FSL buttons point at r2.cloudflarestorage.com buckets that answer NotEntitled (R2 disabled),
+            // and Buzz Server now points at a fuckingfast.net page behind a Cloudflare challenge: neither is playable.
+            if (href.contains("r2.cloudflarestorage.com") || href.contains("fuckingfast.")) return@forEach
+
+            // PixelServer hands out a pixeldrain /u/<id> page, not a file: let the built-in extractor turn it into the API url.
+            if (href.contains("pixeldrain", ignoreCase = true) && href.contains("/u/")) {
+                runCatching {
+                    loadExtractor("https://pixeldrain.com/u/" + href.substringAfter("/u/").substringBefore("?"), url, subtitleCallback, callback)
                 }
                 return@forEach
             }

@@ -5,6 +5,7 @@ import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.vegaprovider.core.VegaBase
 import com.vegaprovider.extractors.GreenMotorsDecoder
 import com.vegaprovider.extractors.MirrorResolver
+import com.vegaprovider.extractors.VidaraResolver
 import org.json.JSONObject
 import org.jsoup.nodes.Element
 import java.net.URI
@@ -61,7 +62,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
 
     private fun quality(t: String) = Regex("""(?i)\b(480|720|1080|2160)p\b|\b4k\b""").find(t)?.value ?: ""
     private val epRe = Regex("""(?i)^(?:episodes?\s*[:.-]?\s*|E)(\d+)\b""")
-    private fun isHost(href: String) = href.contains("hubdrive") || href.contains("hubcloud") || GreenMotorsDecoder.isShort(href)
+    private fun isHost(href: String) = href.contains("hubdrive") || href.contains("hubcloud") || GreenMotorsDecoder.isShort(href) || VidaraResolver.isVidara(href)
 
     override suspend fun load(url: String): LoadResponse? {
         resolveHost()
@@ -94,7 +95,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
                 if (!inSingle || !isHost(href)) return@forEach
                 val ql = quality(el.text()).ifEmpty { q }
                 val ep = if (curEp > 0) curEp else (counters[ql] ?: 0).plus(1).also { counters[ql] = it }
-                eps.getOrPut(ep) { mutableListOf() }.add("${ql.ifEmpty { "Unknown" }}|${abs(href)}")
+                eps.getOrPut(ep) { mutableListOf() }.add("${if (VidaraResolver.isVidara(href)) "Watch" else ql.ifEmpty { "Unknown" }}|${abs(href)}")
             }
             return eps
         }
@@ -115,6 +116,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
     private suspend fun resolveHop(link: String, label: String, sub: (SubtitleFile) -> Unit, cb: (ExtractorLink) -> Unit, depth: Int = 0) {
         if (depth > 3) return
         when {
+            VidaraResolver.isVidara(link) -> VidaraResolver.resolve(link, label, sub, cb)
             link.contains("hubcloud") -> MirrorResolver.resolve(link, label, sub, cb)
             link.contains("hubdrive") -> app.get(link, headers = h).document.selectFirst("a.btn-success1[href]")
                 ?.attr("href")?.let { resolveHop(it, label, sub, cb, depth + 1) }
