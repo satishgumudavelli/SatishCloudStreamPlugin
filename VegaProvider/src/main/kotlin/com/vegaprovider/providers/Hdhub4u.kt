@@ -12,6 +12,7 @@ import com.vegaprovider.core.VegaBase
 import com.vegaprovider.extractors.GenericEmbed
 import com.vegaprovider.extractors.GreenMotorsDecoder
 import com.vegaprovider.extractors.MirrorResolver
+import com.vegaprovider.extractors.PlaydriveResolver
 import com.vegaprovider.extractors.VidaraResolver
 import org.json.JSONObject
 import org.jsoup.nodes.Element
@@ -130,6 +131,7 @@ class Hdhub4u : VegaBase("hdhub", "https://new13.hdhub4u.cl") {
         if (depth > 3) return
         when {
             VidaraResolver.isVidara(link) -> VidaraResolver.resolve(link, label, sub, cb)
+            PlaydriveResolver.isPlaydrive(link) -> PlaydriveResolver.resolve(link, label, "$mainUrl/", cb)
             // hubstream.art/#<id> is a thin redirector: its public resolve api returns the real embed (vidara, turboembed, ...)
             link.contains("hubstream.") -> link.substringAfter("#", "").takeIf { it.isNotBlank() }?.let { id ->
                 JSONObject(app.get("https://hubstream.art/api/public/resolve?file1=$id", headers = h).text).optString("url")
