@@ -1,0 +1,46 @@
+plugins/vega-4khdhub.js
+  s_141489c594600d::t_fa595157c7dfef 149
+plugins/vega-movielinkdb.js
+  s_141489c594600d::t_fa595157c7dfef 56
+plugins/vega-gokuhd.js
+  s_141489c594600d::t_fa595157c7dfef 7,43-47
+tools/helpers.test.mjs
+  s_141489c594600d::t_5026c5b72eff8f 202-226
+plugins/vega-moviesmod.js
+  s_141489c594600d::t_fa595157c7dfef 4,202
+plugins/vega-topmovies.js
+  s_141489c594600d::t_fa595157c7dfef 3,201
+plugins/vega-extramoviessarl.js
+  s_141489c594600d::t_fa595157c7dfef 63
+plugins/onlyflix.js
+  s_141489c594600d::t_fa595157c7dfef 7,92
+plugins/vega-uhdmovies.js
+  s_141489c594600d::t_fa595157c7dfef 3,185
+plugins/vega-movieboxweb.js
+  s_141489c594600d::t_fa595157c7dfef 5,48
+plugins/vega-zeefliz.js
+  s_141489c594600d::t_fa595157c7dfef 143
+tools/run-plugin.mjs
+  s_141489c594600d::t_cc02f42df08b04 38-39
+tools/helpers.js
+  s_141489c594600d::t_5026c5b72eff8f 12,203-242
+  s_141489c594600d::t_750929b8602e4b 243-244
+plugins/vega-filmyfly.js
+  s_141489c594600d::t_fa595157c7dfef 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b82e73cc76179ebc39a1a4c1f5c808b2868b9fe",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
