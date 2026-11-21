@@ -1,0 +1,29 @@
+README.md
+  s_141489c594600d::t_516c57e623e102 76-80
+plugins/vega-hdhub4u.js
+  s_141489c594600d::t_42fbd263c498f2 115,193-194,222,226,236-238,244-253,267-276,330,332-333,343-353,355
+repo.json
+  s_141489c594600d::t_4d0897904c1946 104-105
+tools/fixtures/hdstream4u-player.html
+  s_141489c594600d::t_f4de044df793b9 1-2
+tools/fixtures/the-beast-links.html
+  s_141489c594600d::t_9185840c8040ad 1-5
+tools/hdhub.test.mjs
+  s_141489c594600d::t_2f58481ca89c76 161-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a0ac647c645bbbcc74e83563de53f6c24a009e4",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
