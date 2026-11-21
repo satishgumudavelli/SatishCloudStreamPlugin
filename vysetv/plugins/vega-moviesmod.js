@@ -155,14 +155,28 @@ async function liveBase() {
 
 const seasonRange = (t) => { const m = /season[s]?\s*\{?\s*0*(\d+)(?:\s*[-&to]+\s*0*(\d+))?/i.exec(t) || /\bS0*(\d{1,2})\b/.exec(t); return m ? [+m[1], +(m[2] || m[1])] : null; };
 
+async function searchItems(base, s) {
+  const r = await get(base + '/search/' + encodeURIComponent(s).replace(/%20/g, '+') + '/');
+  const items = [], re = /<h2 class="title[^>]*>\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi; let m;
+  while ((m = re.exec(r.text))) items.push({ href: m[1], title: strip(m[2]).replace(/^Download\s+/i, '') });
+  return items;
+}
+// a show's post covers some seasons ("Season 1-3"): is the one asked for in it?
+function coversSeason(it, q) { const rg = seasonRange(it.title); it.single = rg && rg[0] === rg[1]; return !!rg && q.season >= rg[0] && q.season <= rg[1]; }
 async function findPost(base, q) {
-  const seen = {};
-  for (const s of searchQueries(q)) {
-    const r = await get(base + '/search/' + encodeURIComponent(s).replace(/%20/g, '+') + '/');
-    const items = [], re = /<h2 class="title[^>]*>\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi; let m;
-    while ((m = re.exec(r.text))) items.push({ href: m[1], title: strip(m[2]).replace(/^Download\s+/i, '') });
-    let c = rankMatches(items, q, (i) => { const p = parseTitle(i.title); return { title: p.title, year: p.year }; });
-    if (q.isTv) c = c.filter((i) => { const rg = seasonRange(i.title); i.single = rg && rg[0] === rg[1]; return rg && q.season >= rg[0] && q.season <= rg[1]; });
+  const seen = {}, t0 = Date.now(), qs = searchQueries(q);
+  // the site's search for the IMDb id; the post's page must name it (sure, so it goes after the first two strings)
+  const byImdb = async () => {
+    const hit = await searchByImdb(q, (s) => searchItems(base, s), async (it) => { const p = await get(it.href); return p.status === 200 ? p.text : ''; }, (it) => !q.isTv || coversSeason(it, q));
+    return hit ? { href: hit.item.href, single: hit.item.single, page: { status: 200, text: hit.page } } : null;
+  };
+  let imdbTried = false;
+  for (let i = 0; i < qs.length; i++) {
+    if (i === 2) { imdbTried = true; const r = await byImdb(); if (r) return r; }
+    if (Date.now() - t0 > 12000) break; // the later strings are long shots: stay inside the time limit
+    const items = await searchItems(base, qs[i]);
+    let c = rankMatches(items, q, (it) => { const p = parseTitle(it.title); return { title: p.title, year: p.year }; });
+    if (q.isTv) c = c.filter((it) => coversSeason(it, q));
     for (const it of c.slice(0, 3)) {
       if (seen[it.href]) continue; seen[it.href] = 1;
       const page = await get(it.href); if (page.status !== 200) continue;
@@ -170,7 +184,7 @@ async function findPost(base, q) {
       return { href: it.href, single: it.single, page };
     }
   }
-  return null;
+  return imdbTried ? null : byImdb();
 }
 
 // (heading, modpro url) pairs in page order.

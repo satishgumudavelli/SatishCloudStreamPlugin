@@ -134,7 +134,7 @@
     {
       "id": "vega-moviesmod",
       "name": "MoviesMod",
-      "version": "2",
+      "version": "3",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",
@@ -167,7 +167,7 @@
     {
       "id": "vega-topmovies",
       "name": "Topmovies",
-      "version": "2",
+      "version": "3",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",
@@ -189,7 +189,7 @@
     {
       "id": "vega-zeefliz",
       "name": "Zeefliz",
-      "version": "2",
+      "version": "3",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",

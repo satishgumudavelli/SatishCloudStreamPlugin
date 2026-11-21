@@ -141,8 +141,25 @@ async function zeedl(link, label, out) {
 
 async function getStreams(q) {
   // each search string in turn (the first is as fast as before); later ones only when nothing matched
-  var picks = [], qs = searchQueries(q);
+  var picks = [], qs = searchQueries(q), t0 = Date.now(), imdbTried = false;
+  // the site's search for the IMDb id; the post's page must name it (sure, so it goes after the first two strings)
+  async function tryImdb() {
+    var byId = await searchByImdb(q, async function (text) {
+      var res = await firstOk(HOSTS, '/?s=' + encodeURIComponent(text), null, function (t) { return /entry-title/.test(t); });
+      return res ? parseSearch(res.text).filter(function (p) { return q.isTv || !/season/i.test(p.title); }) : [];
+    }, function (p) { return getText(p.href); });
+    if (byId) {
+      var ib = blocks(byId.page);
+      if (q.isTv) {
+        var sre2 = new RegExp('(?:season\\s*0?' + (q.season || 1) + '|\\bS0?' + (q.season || 1) + ')\\b(?!\\s*[-–]\\s*\\d)', 'i');
+        ib = ib.filter(function (b) { return sre2.test(b.heading) && /single episode/i.test(b.heading); });
+      }
+      ib.forEach(function (b) { picks.push(b); });
+    }
+  }
   for (var k = 0; k < qs.length && !picks.length; k++) {
+    if (k === 2) { imdbTried = true; await tryImdb(); if (picks.length) break; }
+    if (Date.now() - t0 > 12000) break; // the later strings are long shots: stay inside the time limit
     var res = await firstOk(HOSTS, '/?s=' + encodeURIComponent(qs[k]), null, function (t) { return /entry-title/.test(t); });
     if (!res) continue;
     var found = parseSearch(res.text).filter(function (p) { return q.isTv || !/season/i.test(p.title); });
@@ -158,6 +175,7 @@ async function getStreams(q) {
       bl.forEach(function (b) { picks.push(b); });
     }
   }
+  if (!picks.length && !imdbTried) await tryImdb();
   // mid qualities first (720p/1080p), small first
   picks.sort(function (a, b) {
     var qa = +(/(\d{3,4})p/.exec(a.heading + a.text) || [0, 0])[1], qb = +(/(\d{3,4})p/.exec(b.heading + b.text) || [0, 0])[1];

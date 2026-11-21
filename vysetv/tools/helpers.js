@@ -7,6 +7,7 @@
 //   rankMatches(items, query, get)  -> matching items, best first (see below)
 //   bestMatch(items, query, get)    -> the best matching item, or null
 //   searchBest(query, search, get)  -> tries each search string until a match turns up; returns the item or null
+//   searchByImdb(query, search, pageOf, accept) -> the last resort: search for the IMDb id, keep a result only if its page names that id
 //   imdbMatches(text, query)        -> true / false / null: does a page name this film's IMDb id?
 //
 // `get(item)` returns a string (the listing's title) or { title, year?, season? }.
@@ -41,7 +42,7 @@ function searchQueries(query) {
   function add(q) {
     q = String(q || '').replace(/^ +| +$/g, '');
     var k = q.toLowerCase();
-    if (!q || seen[k] || out.length >= 8) return;
+    if (!q || seen[k] || out.length >= 10) return;
     seen[k] = 1;
     out.push(q);
   }
@@ -54,6 +55,13 @@ function searchQueries(query) {
   if (query.isTv && query.season > 1 && names.length) {
     add(names[0] + ' Season ' + query.season);
     add(names[0] + ' S' + query.season);
+  }
+  // last resorts (a request each, only reached when the strings above found nothing): the title with
+  // its year (sites rank it better), and the title without its subtitle ("Dune: Part Two" -> "Dune")
+  if (names.length) {
+    if (!query.isTv && query.year) add(names[0] + ' ' + query.year);
+    var head = names[0].split(/\s*[:\u2013\u2014]\s*|\s+-\s+/)[0];
+    if (head !== names[0] && normTitle(head).replace(/ /g, '').length >= 4) add(head);
   }
   return out;
 }
@@ -160,6 +168,24 @@ async function searchBest(query, search, get) {
     try { items = await search(qs[i]); } catch (e) { items = []; }
     var m = bestMatch(items, query, get);
     if (m) return m;
+  }
+  return null;
+}
+
+// The last resort: ask the site's own search for the IMDb id (many sites keep it in the post, so this finds
+// the film whatever its title is called). A result only counts when its PAGE names the same id: a site that
+// ignores an unknown search term answers with recent posts. `search(text)` returns listings,
+// `pageOf(item)` returns that listing's page text, `accept(item)` (optional) skips listings that can't be
+// the one (the wrong season of a show). Returns { item, page } or null; tries at most 3 listings.
+async function searchByImdb(query, search, pageOf, accept) {
+  if (!query.imdbId) return null;
+  var items;
+  try { items = await search(query.imdbId); } catch (e) { return null; }
+  items = (items || []).filter(function (it) { return !accept || accept(it); }).slice(0, 3);
+  for (var i = 0; i < items.length; i++) {
+    var page = '';
+    try { page = await pageOf(items[i]); } catch (e) {}
+    if (imdbMatches(page, query) === true) return { item: items[i], page: page };
   }
   return null;
 }

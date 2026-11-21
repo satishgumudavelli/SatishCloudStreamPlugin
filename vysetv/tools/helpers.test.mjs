@@ -101,6 +101,28 @@ test('searchBest tries each query until one matches', async () => {
   assert.equal(await H.searchBest(movie(), async () => { throw new Error('x'); }, (i) => i.t), null);
 });
 
+test('searchQueries: last-resort strings (year, subtitle-less)', () => {
+  const q = J(H.searchQueries(movie()));
+  assert.ok(q.includes('Dune: Part Two 2024'));
+  assert.ok(q.includes('Dune'));
+  assert.ok(!J(H.searchQueries(tv())).some((x) => /\b2008\b/.test(x))); // a show's year is not added
+  assert.equal(J(H.searchQueries(movie({ title: 'Se7en', originalTitle: 'Se7en', titles: ['Se7en'], year: 1995 }))).join('|'), 'Se7en|Se7en 1995');
+});
+
+test('searchByImdb only accepts a page that names the id', async () => {
+  const q = { imdbId: 'tt15398776' };
+  const items = [{ u: 'wrong' }, { u: 'right' }, { u: 'tv-wrong-season' }];
+  const pages = { wrong: 'imdb.com/title/tt0000001/', right: 'x imdb.com/title/tt15398776/ y', 'tv-wrong-season': 'imdb.com/title/tt15398776/' };
+  const asked = [];
+  const hit = await H.searchByImdb(q, async (t) => { asked.push(t); return items; }, async (i) => pages[i.u], (i) => i.u !== 'tv-wrong-season');
+  assert.equal(hit.item.u, 'right');
+  assert.deepEqual(J(asked), ['tt15398776']);
+  // a site that ignores the term and shows recent posts: no page names the id -> nothing
+  assert.equal(await H.searchByImdb(q, async () => [{ u: 'wrong' }], async (i) => pages[i.u]), null);
+  assert.equal(await H.searchByImdb({}, async () => items, async () => ''), null); // no id known
+  assert.equal(await H.searchByImdb(q, async () => { throw new Error('x'); }, async () => ''), null);
+});
+
 test('imdbMatches', () => {
   const q = { imdbId: 'tt15398776' };
   assert.equal(H.imdbMatches('see https://www.imdb.com/title/tt15398776/ here', q), true);
