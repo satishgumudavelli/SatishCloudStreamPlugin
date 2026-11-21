@@ -1,0 +1,21 @@
+vysetv/tools/helpers.js
+  s_141489c594600d::t_a16fe4ba9ee2ff 20-21,95
+vysetv/tools/helpers.test.mjs
+  s_141489c594600d::t_ce12432495ed3a 51-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49ab48ce1806a9a0a27c85bb814618e84227dbd6",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
