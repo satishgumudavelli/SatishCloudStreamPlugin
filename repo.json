@@ -4,7 +4,7 @@
     {
       "id": "almostott",
       "name": "AlmostOTT",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows, direct files up to 4K",
       "types": [
         "movie",
@@ -15,7 +15,7 @@
     {
       "id": "cinemaos",
       "name": "CinemaOS",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows, many servers (slow to start)",
       "types": [
         "movie",
@@ -26,7 +26,7 @@
     {
       "id": "framemovie",
       "name": "FrameMovie",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows, Vidrock and Vidlink, several dubs",
       "types": [
         "movie",
@@ -37,7 +37,7 @@
     {
       "id": "onlyflix",
       "name": "Onlyflix",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, 1080p HLS",
       "types": [
         "movie",
@@ -48,7 +48,7 @@
     {
       "id": "pixelflix",
       "name": "Pixelflix",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows, Hindi and English audio",
       "types": [
         "movie",
@@ -59,7 +59,7 @@
     {
       "id": "vega-4khdhub",
       "name": "4KHDHub",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, large files via HubCloud",
       "types": [
         "movie",
@@ -70,7 +70,7 @@
     {
       "id": "vega-autoembed",
       "name": "AutoEmbed",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows, HLS",
       "types": [
         "movie",
@@ -81,7 +81,7 @@
     {
       "id": "vega-extramoviessarl",
       "name": "ExtraMovies",
-      "version": "4",
+      "version": "5",
       "note": "Films, direct files via PixelDrain",
       "types": [
         "movie"
@@ -91,7 +91,7 @@
     {
       "id": "vega-filmyfly",
       "name": "Filmyfly",
-      "version": "4",
+      "version": "5",
       "note": "Films, direct files",
       "types": [
         "movie"
@@ -101,7 +101,7 @@
     {
       "id": "vega-hdhub4u",
       "name": "HDHub4u",
-      "version": "7",
+      "version": "8",
       "note": "Films and shows: Player 2 (HLS), HubCDN Instant, HubDrive and greenmotors files; finds the current domain itself and retries its flaky connection",
       "types": [
         "movie",
@@ -112,7 +112,7 @@
     {
       "id": "vega-gokuhd",
       "name": "GokuHD",
-      "version": "4",
+      "version": "5",
       "note": "Anime and new releases, recent titles only",
       "types": [
         "movie",
@@ -123,7 +123,7 @@
     {
       "id": "vega-movieboxweb",
       "name": "MovieBox",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, many dubs",
       "types": [
         "movie",
@@ -134,7 +134,7 @@
     {
       "id": "vega-movielinkdb",
       "name": "MovieLinkDB",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, direct mkv",
       "types": [
         "movie",
@@ -145,7 +145,7 @@
     {
       "id": "vega-moviesmod",
       "name": "MoviesMod",
-      "version": "5",
+      "version": "6",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",
@@ -156,7 +156,7 @@
     {
       "id": "vega-multimovies",
       "name": "MultiMovies",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows, HLS in several audio languages",
       "types": [
         "movie",
@@ -167,7 +167,7 @@
     {
       "id": "vega-mxplayer",
       "name": "MX Player",
-      "version": "2",
+      "version": "3",
       "note": "Free Indian and other titles, HLS",
       "types": [
         "movie",
@@ -178,7 +178,7 @@
     {
       "id": "vega-topmovies",
       "name": "Topmovies",
-      "version": "5",
+      "version": "6",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",
@@ -189,7 +189,7 @@
     {
       "id": "vega-uhdmovies",
       "name": "UHDMovies",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, 4K and 1080p mkv",
       "types": [
         "movie",
@@ -200,7 +200,7 @@
     {
       "id": "vega-zeefliz",
       "name": "Zeefliz",
-      "version": "5",
+      "version": "6",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",

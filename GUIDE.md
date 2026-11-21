@@ -132,6 +132,23 @@ It reads untidy real-world HTML (unclosed `<li>`/`<p>`/`<td>`, unquoted attribut
 values, comments, scripts). Speed in the app: a 60–90 KB page parses in about 50–80 ms (a TV is several
 times slower), a 1.5 MB page in about 1.5 s: **parse once** and keep the tree.
 
+### Time budget and retries (the run guard)
+
+A run has 20 s of script time and the app stops waiting at 25 s, and a plugin that is still waiting for a slow host at that point
+loses everything it had found. Every plugin therefore ends with the same small snippet, `tools/run-guard.js`: paste it, unchanged,
+at the **end** of your plugin (after the domains snippet, if you have one). It does two things:
+
+* **A time budget** (16 s by default; set `var BUDGET_MS = 12000;` earlier in the plugin to change it). Each request's timeout is
+  clipped to what is left, and once the budget is used up requests fail at once (`status: 0`, `error: 'out of time'`). Your code
+  carries on with whatever it already has, so a plugin that resolves eight links and finds the last two slow still returns six.
+  Write plugins so that a failed request means "skip this one", never "throw".
+* **A retry for flaky connections.** A GET whose connection was reset or refused is tried again, twice at most, while at least 3 s
+  are left. Some networks reset connections at random and a retry usually gets through. A request that got an answer, timed out,
+  could not resolve its name, or is a POST is never retried (`{ retry: false }` switches it off for one request).
+
+`node --test tools/run-guard.test.mjs` checks that every plugin's copy equals `tools/run-guard.js`.
+`node tools/diagnose-host.mjs some.host` shows, stage by stage, why a connection fails and how steady it is.
+
 ### Domains that change (domains.json)
 
 Sites change domain often. Handle it **in the plugin**, not in the app: keep one file in the repository,

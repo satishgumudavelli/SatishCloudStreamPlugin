@@ -37,7 +37,8 @@ test('every plugin that uses siteDomains carries the same copy of the snippet', 
     using++;
     const i = s.indexOf(MARK);
     assert.ok(i >= 0, `${f} calls siteDomains but has no snippet`);
-    assert.equal(s.slice(i).trimEnd(), SNIPPET.trimEnd(), `${f}: its copy differs from tools/site-domains.js (paste the file again)`);
+    const j = s.indexOf('// ---- run guard', i);
+    assert.equal(s.slice(i, j < 0 ? s.length : j).trimEnd(), SNIPPET.trimEnd(), `${f}: its copy differs from tools/site-domains.js (paste the file again)`);
   }
   assert.ok(using >= 12);
 });

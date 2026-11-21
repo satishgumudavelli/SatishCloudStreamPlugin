@@ -51,7 +51,8 @@ Rules:
 5. Drop expired signed URLs. Never hard-code tokens or secrets. Don't invent links: a host you can't
    resolve is skipped.
 6. If the site has no TMDB-id lookup, search by title **with the helpers, not your own matching**: `searchBest(query, search, get)` tries each string from `searchQueries(query)` until a listing matches (aliases, season variants, year check, right season are handled). When a page shows an IMDb link, also check `imdbMatches(pageText, query)` (`false` means a different film).
-7. Start the file with a comment: the site, and the chain you followed (search → page → player → API).
+7. End the file with the two snippets, unchanged: `tools/site-domains.js` (only if the site's domain changes; see GUIDE.md) and then `tools/run-guard.js` (the time budget and the retry: always). A request that fails (`status: 0`) must mean "skip this one", never "throw": after the budget everything fails at once and the plugin should return what it has.
+8. Start the file with a comment: the site, and the chain you followed (search → page → player → API).
 
 ## How to work
 

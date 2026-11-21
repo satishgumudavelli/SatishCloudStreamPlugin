@@ -110,20 +110,6 @@ async function hubcloud(url, label, out, tag) {
 // chain gave 11 streams (6 of 8 played). From some networks the connection to the site is reset at random (see
 // tools/diagnose-host.mjs), so the page fetch is retried a few times. The page reading follows the Kotlin provider's selectors;
 // the logic also has tests against a made-up site (tools/hdhub.test.mjs).
-// A time budget for the whole run: the script is stopped at 20 s and loses everything, so every request stops waiting when the
-// budget (set in getStreams) is used up, and what was found by then is returned.
-var DEADLINE = 0;
-var BUDGET_MS = 16000; // about 4 s are left for the app after it
-var _http = http;
-http = function (url, opts) {
-  opts = opts || {};
-  if (DEADLINE) {
-    var left = DEADLINE - Date.now();
-    if (left < 400) return Promise.resolve({ status: 0, error: 'out of time', text: '', headers: {}, url: String(url) });
-    opts = Object.assign({}, opts, { timeout: Math.min(opts.timeout || 15000, left) });
-  }
-  return _http(url, opts);
-};
 var HOSTS = ['https://new15.hdhub4u.cl'];
 var LANDING = 'https://hdhub4u.fr';
 var MAX = 8; // resolved links per request (script time limit is 20 s)
@@ -191,7 +177,7 @@ async function pickPost(q) {
 // The connection to the site is flaky (about half of the handshakes are reset, measured with tools/diagnose-host.mjs):
 // a connection that fails is tried again a few times; an answer of any kind is not.
 async function fetchPost(link) {
-  var path = link.replace(/^https?:\/\/[^\/]+/, ''), tries = HOSTS.map(function (h) { return { url: h + path, again: 6 }; });
+  var path = link.replace(/^https?:\/\/[^\/]+/, ''), tries = HOSTS.map(function (h) { return { url: h + path, again: 2 }; }); // (each request also retries a reset connection itself: tools/run-guard.js)
   tries.push({ url: link, again: 1 }); // the index's own link (usually a dead domain): once
   var t0 = Date.now();
   for (var i = 0; i < tries.length; i++) {
@@ -330,7 +316,6 @@ async function resolveHop(link, label, out, depth) {
 }
 
 async function getStreams(query) {
-  DEADLINE = Date.now() + BUDGET_MS;
   // The site's own lookup and domains.json (the repository's list) start together; either may stall for seconds. When the lookup
   // answers, that is the domain and domains.json is not waited for; only without an answer does domains.json decide.
   var fromFile = siteDomains('hdhub', HOSTS).catch(function () { return HOSTS; });
@@ -391,7 +376,7 @@ async function getStreams(query) {
 //   async function getStreams(q) {
 //     DOMAINS = await siteDomains('Moviesmod', DOMAINS);   // listed ones first, then the plugin's own
 //
-// The file is read once per run (5 s limit); when it can't be read the plugin's own list is used.
+// The file is read once per run (3 s limit); when it can't be read the plugin's own list is used.
 
 var DOMAINS_URL = 'https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/refs/heads/master/domains.json';
 var _domainsFile = null;
@@ -409,7 +394,7 @@ async function siteDomains(name, fallback, url) {
   }
   try {
     if (!_domainsFile) {
-      var r = await http(url || DOMAINS_URL, { timeout: 5000 });
+      var r = await http(url || DOMAINS_URL, { timeout: 3000 });
       _domainsFile = r.status === 200 ? JSON.parse(r.text) : { domains: [] };
     }
     (_domainsFile.domains || []).forEach(function (x) {
@@ -421,3 +406,41 @@ async function siteDomains(name, fallback, url) {
   (fallback || []).forEach(add);
   return out;
 }
+
+// ---- run guard (snippet: tools/run-guard.js) ----
+//
+// Paste this, unchanged, at the END of a plugin (after the domains snippet if it has one). tools/domains.test.mjs checks the copies.
+//
+// A plugin run has 20 s of script time and the app stops waiting at 25 s: a plugin still waiting for a slow host then loses everything
+// it had found. This guard gives every run a time budget and a retry for flaky connections:
+//   - each request's timeout is clipped to what is left of the budget (BUDGET_MS: 16 s unless the plugin sets its own earlier in the
+//     file), and once the budget is used up requests fail at once (status 0, "out of time"), so the plugin finishes with what it has
+//   - a GET whose connection was reset or refused is tried again, twice at most and only while 3 s are left: some networks reset
+//     connections at random and a retry usually gets through. A request that got an answer, timed out, could not resolve its name,
+//     or is not a GET is never retried (pass retry: false to switch it off for one request).
+var DEADLINE = 0;
+var BUDGET_MS = typeof BUDGET_MS === 'number' ? BUDGET_MS : 16000;
+var _guardedHttp = http;
+http = async function (url, opts) {
+  opts = opts || {};
+  var method = String(opts.method || 'GET').toUpperCase(), r;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var o = opts;
+    if (DEADLINE) {
+      var left = DEADLINE - Date.now();
+      if (left < 400) return { status: 0, error: 'out of time', text: '', headers: {}, url: String(url) };
+      o = Object.assign({}, opts, { timeout: Math.min(opts.timeout || 15000, left) });
+    }
+    r = await _guardedHttp(url, o);
+    var why = String(r.error || '');
+    if (r.status !== 0 || method !== 'GET' || opts.retry === false) return r;
+    if (!/reset|ECONNRESET|Connection failed|connection closed|fetch failed|refused|EPIPE/i.test(why) || /ENOTFOUND|host lookup|timeout|out of time/i.test(why)) return r;
+    if (DEADLINE && DEADLINE - Date.now() < 3000) return r;
+  }
+  return r;
+};
+var _guardedGetStreams = getStreams;
+getStreams = async function (q) {
+  DEADLINE = Date.now() + BUDGET_MS;
+  return _guardedGetStreams(q);
+};

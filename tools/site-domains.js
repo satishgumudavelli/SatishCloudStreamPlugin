@@ -9,7 +9,7 @@
 //   async function getStreams(q) {
 //     DOMAINS = await siteDomains('Moviesmod', DOMAINS);   // listed ones first, then the plugin's own
 //
-// The file is read once per run (5 s limit); when it can't be read the plugin's own list is used.
+// The file is read once per run (3 s limit); when it can't be read the plugin's own list is used.
 
 var DOMAINS_URL = 'https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/refs/heads/master/domains.json';
 var _domainsFile = null;
@@ -27,7 +27,7 @@ async function siteDomains(name, fallback, url) {
   }
   try {
     if (!_domainsFile) {
-      var r = await http(url || DOMAINS_URL, { timeout: 5000 });
+      var r = await http(url || DOMAINS_URL, { timeout: 3000 });
       _domainsFile = r.status === 200 ? JSON.parse(r.text) : { domains: [] };
     }
     (_domainsFile.domains || []).forEach(function (x) {
