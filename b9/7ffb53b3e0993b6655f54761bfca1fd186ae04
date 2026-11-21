@@ -1,0 +1,25 @@
+vysetv/GUIDE.md
+  s_141489c594600d::t_985d2e858d1442 1-194
+vysetv/PROMPT.md
+  s_141489c594600d::t_9e8c8e5950ee3c 1-88
+vysetv/README.md
+  s_141489c594600d::t_36326f39884b6e 3-4
+vysetv/tools/run-plugin.mjs
+  s_141489c594600d::t_596cb25bfe3ecf 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b97ffb53b3e0993b6655f54761bfca1fd186ae04",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
