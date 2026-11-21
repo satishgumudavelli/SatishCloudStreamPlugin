@@ -1,0 +1,26 @@
+tools/diagnose-host.mjs
+  s_141489c594600d::t_d8fb5ea5c0e5bc 1-91
+  s_141489c594600d::t_a41d9dc335fe04 92-99
+README.md
+  s_141489c594600d::t_49daeaf8636958 76-78
+plugins/vega-hdhub4u.js
+  s_141489c594600d::t_7f6b54cd73f98b 109,173-175,177-179,181-186
+repo.json
+  s_141489c594600d::t_6731d8fb415ce6 104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f1b14f04f34339d347e1ef713427f12e26b0e02",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
