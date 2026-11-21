@@ -1,0 +1,61 @@
+vysetv/plugins/onlyflix.js
+  s_141489c594600d::t_895b9437fc8152 1-107
+vysetv/README.md
+  s_141489c594600d::t_205ef4a8fe558b 1-75
+vysetv/plugins/almostott.js
+  s_141489c594600d::t_2199c6f349fb0b 1-102
+vysetv/plugins/cinemaos.js
+  s_141489c594600d::t_6cf240def2606e 1-260
+vysetv/plugins/demo.js
+  s_141489c594600d::t_a50268ca15cabd 1-21
+vysetv/plugins/framemovie.js
+  s_141489c594600d::t_536ae9228e8729 1-128
+vysetv/plugins/pixelflix.js
+  s_141489c594600d::t_7aaa61bd439533 1-61
+vysetv/plugins/vega-4khdhub.js
+  s_141489c594600d::t_5b68a43311abf2 1-167
+vysetv/plugins/vega-autoembed.js
+  s_141489c594600d::t_fd5651dcd32e72 1-83
+vysetv/plugins/vega-extramoviessarl.js
+  s_141489c594600d::t_5ad5fc02d413f5 1-98
+vysetv/plugins/vega-filmyfly.js
+  s_141489c594600d::t_3a8eb4e4e48a58 1-77
+vysetv/plugins/vega-gokuhd.js
+  s_141489c594600d::t_14b6e2c9cd9699 1-85
+vysetv/plugins/vega-movieboxweb.js
+  s_141489c594600d::t_cea5d1b16de98d 1-94
+vysetv/plugins/vega-movielinkdb.js
+  s_141489c594600d::t_ce270fc01c5f6c 1-103
+vysetv/plugins/vega-moviesmod.js
+  s_141489c594600d::t_444d392db1ef32 1-202
+vysetv/plugins/vega-multimovies.js
+  s_141489c594600d::t_cee5c8ee45b8b7 1-28
+vysetv/plugins/vega-mxplayer.js
+  s_141489c594600d::t_3f7548e0c4ea37 1-52
+vysetv/plugins/vega-topmovies.js
+  s_141489c594600d::t_2f8f9f71c1e270 1-198
+vysetv/plugins/vega-uhdmovies.js
+  s_141489c594600d::t_c24012ce7f22c0 1-210
+vysetv/plugins/vega-zeefliz.js
+  s_141489c594600d::t_f4d11561a3d82f 1-192
+vysetv/repo.json
+  s_141489c594600d::t_747a77293a6d91 1-201
+vysetv/tools/run-plugin.mjs
+  s_141489c594600d::t_4276a07bfcb266 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87cf7d1a53a90ff8b070420afcaaba4bf050d04c",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
