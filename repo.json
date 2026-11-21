@@ -37,7 +37,7 @@
     {
       "id": "onlyflix",
       "name": "Onlyflix",
-      "version": "3",
+      "version": "4",
       "note": "Films and shows, 1080p HLS",
       "types": [
         "movie",
@@ -59,7 +59,7 @@
     {
       "id": "vega-4khdhub",
       "name": "4KHDHub",
-      "version": "3",
+      "version": "4",
       "note": "Films and shows, large files via HubCloud",
       "types": [
         "movie",
@@ -81,7 +81,7 @@
     {
       "id": "vega-extramoviessarl",
       "name": "ExtraMovies",
-      "version": "3",
+      "version": "4",
       "note": "Films, direct files via PixelDrain",
       "types": [
         "movie"
@@ -91,7 +91,7 @@
     {
       "id": "vega-filmyfly",
       "name": "Filmyfly",
-      "version": "3",
+      "version": "4",
       "note": "Films, direct files",
       "types": [
         "movie"
@@ -101,7 +101,7 @@
     {
       "id": "vega-hdhub4u",
       "name": "HDHub4u",
-      "version": "3",
+      "version": "4",
       "note": "Films and shows via HubCloud and Vidara; finds the current domain itself (not tested on the live site yet)",
       "types": [
         "movie",
@@ -112,7 +112,7 @@
     {
       "id": "vega-gokuhd",
       "name": "GokuHD",
-      "version": "3",
+      "version": "4",
       "note": "Anime and new releases, recent titles only",
       "types": [
         "movie",
@@ -123,7 +123,7 @@
     {
       "id": "vega-movieboxweb",
       "name": "MovieBox",
-      "version": "3",
+      "version": "4",
       "note": "Films and shows, many dubs",
       "types": [
         "movie",
@@ -134,7 +134,7 @@
     {
       "id": "vega-movielinkdb",
       "name": "MovieLinkDB",
-      "version": "3",
+      "version": "4",
       "note": "Films and shows, direct mkv",
       "types": [
         "movie",
@@ -145,7 +145,7 @@
     {
       "id": "vega-moviesmod",
       "name": "MoviesMod",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",
@@ -178,7 +178,7 @@
     {
       "id": "vega-topmovies",
       "name": "Topmovies",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",
@@ -189,7 +189,7 @@
     {
       "id": "vega-uhdmovies",
       "name": "UHDMovies",
-      "version": "3",
+      "version": "4",
       "note": "Films and shows, 4K and 1080p mkv",
       "types": [
         "movie",
@@ -200,7 +200,7 @@
     {
       "id": "vega-zeefliz",
       "name": "Zeefliz",
-      "version": "4",
+      "version": "5",
       "note": "Films and shows, mkv files",
       "types": [
         "movie",

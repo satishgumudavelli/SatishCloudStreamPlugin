@@ -35,9 +35,9 @@ const sandbox = { http, console, setTimeout, clearTimeout, JSON, Promise, RegExp
 vm.createContext(sandbox);
 // the same helper functions the app gives every plugin (assets/plugins/helpers.js in VyseTV)
 vm.runInContext(fs.readFileSync(new URL('./helpers.js', import.meta.url), 'utf8'), sandbox, { filename: 'helpers.js' });
+vm.runInContext(fs.readFileSync(file, 'utf8') + '\n;this.getStreams = getStreams;', sandbox, { filename: file });
 // DOMAINS_URL=http://localhost:8000/domains.json: a domains file of your own, to test a domain change
 if (process.env.DOMAINS_URL) vm.runInContext('DOMAINS_URL = ' + JSON.stringify(process.env.DOMAINS_URL), sandbox);
-vm.runInContext(fs.readFileSync(file, 'utf8') + '\n;this.getStreams = getStreams;', sandbox, { filename: file });
 // aliases: TITLES="Name one|Name two" (the app passes TMDB's alternative titles here)
 const titles = [...new Set([title, ...(process.env.TITLES || '').split('|').filter(Boolean)])];
 const query = { tmdbId: +tmdbId, imdbId: imdbId || null, type, isTv: type === 'tv', title, originalTitle: title, titles, isAnime: false, year: year ? +year : null, season: season ? +season : null, episode: episode ? +episode : null };

@@ -132,6 +132,29 @@ It reads untidy real-world HTML (unclosed `<li>`/`<p>`/`<td>`, unquoted attribut
 values, comments, scripts). Speed in the app: a 60–90 KB page parses in about 50–80 ms (a TV is several
 times slower), a 1.5 MB page in about 1.5 s: **parse once** and keep the tree.
 
+### Domains that change (domains.json)
+
+Sites change domain often. Handle it **in the plugin**, not in the app: keep one file in the repository,
+`domains.json` (`{"domains": [{"name": "Moviesmod", "domain": "moviesmod.fi"}, ...]}`), and let each plugin read it.
+`tools/site-domains.js` is a small snippet that does this: paste it, unchanged, at the **end** of the plugin, then
+call it first thing in `getStreams`:
+
+```js
+var DOMAINS = ['https://moviesmod.fi'];                 // the plugin's own list: the fallback
+async function getStreams(q) {
+  DOMAINS = await siteDomains('Moviesmod', DOMAINS);    // the file's domains for "Moviesmod" first, then the plugin's own
+  ...
+}
+// ---- domains.json (snippet: tools/site-domains.js) ----  (the pasted snippet)
+```
+
+The file is read once per run (5 s limit); when it can't be read the plugin's own list is used. A rotated domain is
+fixed by editing `domains.json` (no plugin update). The snippet's `DOMAINS_URL` points at this repository's
+`domains.json` on `master`: change it when you keep the file elsewhere. A site that publishes its current domain itself
+(HDHub4u does, through lookup endpoints) is better asked directly: see `plugins/vega-hdhub4u.js`.
+`node --test tools/domains.test.mjs` checks that every plugin's pasted copy equals `tools/site-domains.js`.
+The app knows nothing about this file: a change here reaches users through the repository alone.
+
 ### Title helpers
 
 Every plugin can call these (the app loads them before your script; the test harness loads the same
