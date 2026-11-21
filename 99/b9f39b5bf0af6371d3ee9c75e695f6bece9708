@@ -1,0 +1,53 @@
+vysetv/GUIDE.md
+  s_141489c594600d::t_2ed4a14c02cc23 18-19,42-43,46,48,94-96,102-162
+vysetv/PROMPT.md
+  s_141489c594600d::t_dff93d027b332d 20,36,38-39,53
+vysetv/plugins/onlyflix.js
+  s_141489c594600d::t_7af5530c8b2281 18-19,24-30
+vysetv/plugins/vega-4khdhub.js
+  s_141489c594600d::t_cf2c498f0c10a7 111-120
+vysetv/plugins/vega-extramoviessarl.js
+  s_141489c594600d::t_753e0e5e1544e2 64-78
+vysetv/plugins/vega-filmyfly.js
+  s_141489c594600d::t_b5824093e1dccc 29-32
+vysetv/plugins/vega-gokuhd.js
+  s_141489c594600d::t_5fe819f6befbde 44-46
+vysetv/plugins/vega-movieboxweb.js
+  s_141489c594600d::t_4bc9c4d8238b52 9,43,51-54,56
+vysetv/plugins/vega-movielinkdb.js
+  s_141489c594600d::t_7373e5bd81a848 57-70,72,75
+vysetv/plugins/vega-moviesmod.js
+  s_141489c594600d::t_6e7149c446e39b 160-172,191
+vysetv/plugins/vega-mxplayer.js
+  s_141489c594600d::t_271a1c728c56c7 26-30
+vysetv/plugins/vega-topmovies.js
+  s_141489c594600d::t_6573782b585c91 159-171,190
+vysetv/plugins/vega-uhdmovies.js
+  s_141489c594600d::t_24a853ee35626b 159-166
+vysetv/plugins/vega-zeefliz.js
+  s_141489c594600d::t_00595c862a3b0e 147-162
+vysetv/repo.json
+  s_141489c594600d::t_3dd7c790d55f8a 40,62,84,94,104,115,126,137,159,170,181,192
+vysetv/tools/helpers.js
+  s_141489c594600d::t_921f5e65d5b582 1-385
+vysetv/tools/helpers.test.mjs
+  s_141489c594600d::t_2707afacb287df 1-172
+vysetv/tools/run-plugin.mjs
+  s_141489c594600d::t_961b39c6d54236 36-37,39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99b9f39b5bf0af6371d3ee9c75e695f6bece9708",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
