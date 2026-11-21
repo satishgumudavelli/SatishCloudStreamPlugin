@@ -89,7 +89,7 @@ async function nontongo(embedUrl, quality, q) {
 }
 
 async function getStreams(q) {
-  DOMAINS = await siteDomains('onlyflix', DOMAINS); // domains.json first (the repository's), then this list
+  if (typeof siteDomains === 'function') DOMAINS = await siteDomains('onlyflix', DOMAINS); // domains.json first (the repository's), then this list
   for (const base of DOMAINS) {
     let page = await findPage(base, q);
     if (!page) continue; // not on this domain

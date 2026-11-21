@@ -198,7 +198,7 @@ function blocks(html) {
 }
 
 async function getStreams(q) {
-  DOMAINS = await siteDomains('Topmovies', DOMAINS); // domains.json first (the repository's), then this list
+  if (typeof siteDomains === 'function') DOMAINS = await siteDomains('Topmovies', DOMAINS); // domains.json first (the repository's), then this list
   const base = await liveBase(); if (!base) return [];
   const post = await findPost(base, q); if (!post) return [];
   const page = post.page;

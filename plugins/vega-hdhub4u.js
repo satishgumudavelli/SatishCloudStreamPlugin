@@ -285,7 +285,7 @@ async function resolveHop(link, label, out, depth) {
 }
 
 async function getStreams(query) {
-  HOSTS = await siteDomains('hdhub', HOSTS); // domains.json first (the repository's), then this list
+  if (typeof siteDomains === 'function') HOSTS = await siteDomains('hdhub', HOSTS); // domains.json first (the repository's), then this list
   var live = await discoverDomain().catch(function () { return null; }); // the lookup's current domain comes first
   if (live) HOSTS = [live].concat(HOSTS.filter(function (h) { return h !== live; }));
   console.log('[hdhub] domains: ' + HOSTS.join(' ') + (live ? ' (current: ' + live + ')' : ' (lookup gave none)'));

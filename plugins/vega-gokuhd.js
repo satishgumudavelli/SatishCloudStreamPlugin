@@ -41,7 +41,7 @@ const qual = (h) => { const m = /(2160|1080|720|480)p?/i.exec(h) || /(4k)/i.exec
 
 async function getStreams(query) {
   // the site's domains: domains.json first, then this one; the first that answers is used
-  for (const d of await siteDomains('gokuHD', [BASE])) {
+  for (const d of typeof siteDomains === 'function' ? await siteDomains('gokuHD', [BASE]) : [BASE]) {
     const r = await http(d + '/', { headers: { 'User-Agent': UA }, timeout: 6000 });
     if (r.status >= 200 && r.status < 400) { BASE = d; break; }
   }

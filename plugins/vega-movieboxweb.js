@@ -45,7 +45,7 @@ async function search(base, title) {
 }
 
 async function getStreams(query) {
-  DOMAINS = await siteDomains('movieBoxWeb', DOMAINS); // domains.json first (the repository's), then this list
+  if (typeof siteDomains === 'function') DOMAINS = await siteDomains('movieBoxWeb', DOMAINS); // domains.json first (the repository's), then this list
   const names = [query.title, query.originalTitle].filter(Boolean);
   for (const base of DOMAINS) {
     let det = null;

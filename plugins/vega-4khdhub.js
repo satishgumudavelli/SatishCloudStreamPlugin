@@ -146,7 +146,7 @@ function collectTv(html, season, ep) {
 }
 
 async function getStreams(query) {
-  HOSTS = await siteDomains('4khdhub', HOSTS); // domains.json first (the repository's), then this list
+  if (typeof siteDomains === 'function') HOSTS = await siteDomains('4khdhub', HOSTS); // domains.json first (the repository's), then this list
   var page = await pickPage(query);
   if (!page) return [];
   var html = await getText(page);
