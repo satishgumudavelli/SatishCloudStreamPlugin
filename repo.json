@@ -101,7 +101,7 @@
     {
       "id": "vega-hdhub4u",
       "name": "HDHub4u",
-      "version": "6",
+      "version": "7",
       "note": "Films and shows: Player 2 (HLS), HubCDN Instant, HubDrive and greenmotors files; finds the current domain itself and retries its flaky connection",
       "types": [
         "movie",

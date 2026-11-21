@@ -17,7 +17,7 @@ function load(routes) {
   const http = async (url, opts = {}) => {
     calls.push({ url, opts });
     for (const [re, fn] of routes) {
-      if (re.test(url)) { const r = fn(url, opts); return { status: 200, url, headers: {}, text: '', ...r }; }
+      if (re.test(url)) { const r = await fn(url, opts); return { status: 200, url, headers: {}, text: '', ...r }; }
     }
     return { status: 0, error: 'no route', url, headers: {}, text: '' };
   };
@@ -209,5 +209,25 @@ test('getStreams on the real page: HLS first, dead PixelDrain dropped, the rest 
   assert.equal(kinds[0], 'hls:HDHub4u Player 2'); // the player page first
   assert.ok(kinds.includes('mp4:HDHub4u HubCDN'));
   assert.ok(!J(r).some((s) => /dead1/.test(s.url))); // the dead PixelDrain file is gone
+});
+
+test('time budget: slow hosts are cut off at the deadline, what already resolved is returned', async () => {
+  // answers like the real http(): a slow host's answer arrives as status 0 once the request's timeout is up
+  const slow = (ms) => async (u, o) => { const wait = Math.min(ms, (o && o.timeout) || ms); await new Promise((r) => setTimeout(r, wait)); return { status: 0, error: 'timeout', text: '' }; };
+  const post = fixture('the-beast-links.html').replace('</body>', '<!-- ' + 'x'.repeat(2100) + ' --></body>');
+  const c = load([
+    [/hdhub4u\.fr\/$/, () => ({ status: 503 })],
+    [/raw\.githubusercontent\.com|\/host\//, () => ({ status: 404 })],
+    index([hit('The Beast (2026) WEB-DL', 'https://old.test/the-beast-2026/', 'tt1')]),
+    [/new15\.hdhub4u\.cl\/the-beast-2026\//, () => ({ text: post })],
+    [/hdstream4u\.com\/file\//, () => ({ text: fixture('hdstream4u-player.html') })], // fast
+    [/hubdrive\.blog|greenmotors\.club|hubcdn\.club/, slow(8000)], // the rest: 8 s each
+  ]);
+  vm.runInContext('BUDGET_MS = 900', c);
+  const t0 = Date.now();
+  const r = await c.getStreams({ isTv: false, title: 'The Beast', originalTitle: 'The Beast', titles: ['The Beast'], year: 2026, imdbId: 'tt1' });
+  const took = Date.now() - t0;
+  assert.ok(took < 2500, `took ${took} ms: it waited for the slow hosts`);
+  assert.deepEqual(J(r).map((s) => s.server), ['HDHub4u Player 2']); // the fast one came back
 });
 

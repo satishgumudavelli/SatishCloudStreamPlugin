@@ -110,6 +110,20 @@ async function hubcloud(url, label, out, tag) {
 // chain gave 11 streams (6 of 8 played). From some networks the connection to the site is reset at random (see
 // tools/diagnose-host.mjs), so the page fetch is retried a few times. The page reading follows the Kotlin provider's selectors;
 // the logic also has tests against a made-up site (tools/hdhub.test.mjs).
+// A time budget for the whole run: the script is stopped at 20 s and loses everything, so every request stops waiting when the
+// budget (set in getStreams) is used up, and what was found by then is returned.
+var DEADLINE = 0;
+var BUDGET_MS = 16000; // about 4 s are left for the app after it
+var _http = http;
+http = function (url, opts) {
+  opts = opts || {};
+  if (DEADLINE) {
+    var left = DEADLINE - Date.now();
+    if (left < 400) return Promise.resolve({ status: 0, error: 'out of time', text: '', headers: {}, url: String(url) });
+    opts = Object.assign({}, opts, { timeout: Math.min(opts.timeout || 15000, left) });
+  }
+  return _http(url, opts);
+};
 var HOSTS = ['https://new15.hdhub4u.cl'];
 var LANDING = 'https://hdhub4u.fr';
 var MAX = 8; // resolved links per request (script time limit is 20 s)
@@ -120,29 +134,31 @@ var SERIES_RE = /\bseason\b|\bS\d{1,2}\b|web series/i;
 
 // The current domain, the way the landing page itself finds it: it asks a list of lookup endpoints for
 // <endpoint>?v=<year month day hour> and gets JSON back: "c" is the current site (base64), "h" the landing domain.
-// The landing page carries the list (it changes), so it is read first; ours is the fallback.
+// Ours are asked first (they answer in a fraction of a second); the landing page's own list is the fallback.
 var LOOKUPS = ['https://h4.suncdn.org/host/', 'https://points.topapii.com/host/', 'https://ml.theapii.org/host/', 'https://dns.pingora.fyi/v2/host', 'https://cdn.hub4u.cloud/host/'];
 async function discoverDomain() {
-  var eps = LOOKUPS.slice();
+  var d = new Date(), v = 1e6 * d.getFullYear() + 1e4 * (d.getMonth() + 1) + 100 * d.getDate() + d.getHours() + 1;
+  async function ask(ep) {
+    var r = await http(ep + '?v=' + v, { headers: { 'User-Agent': UA }, timeout: 4000 });
+    if (r.status !== 200) return null;
+    try {
+      var j = JSON.parse(r.text), site = j && j.c ? atob(j.c) : '';
+      return /^https?:\/\/[^\/]+/.test(site) ? /^(https?:\/\/[^\/]+)/.exec(site)[1] : null;
+    } catch (e) { return null; }
+  }
+  // all endpoints at once (one that stalls costs nothing): the first answer in list order wins
+  var first = (await Promise.all(LOOKUPS.map(ask))).filter(Boolean)[0];
+  if (first) return first;
+  // none answered: the landing page carries its own (current) list
   try {
-    var land = await http(LANDING + '/', { headers: { 'User-Agent': UA }, timeout: 6000 });
+    var land = await http(LANDING + '/', { headers: { 'User-Agent': UA }, timeout: 5000 });
     var m = land.status === 200 && /const _rx=\[([^\]]*)\]/.exec(land.text);
     if (m) {
       var own = [], re = /atob\("([^"]+)"\)/g, x;
-      while ((x = re.exec(m[1]))) { try { var u = atob(x[1]); if (/^https?:\/\//.test(u)) own.push(u); } catch (e) {} }
-      if (own.length) eps = own.concat(eps.filter(function (e) { return own.indexOf(e) < 0; }));
+      while ((x = re.exec(m[1]))) { try { var u = atob(x[1]); if (/^https?:\/\//.test(u) && LOOKUPS.indexOf(u) < 0) own.push(u); } catch (e) {} }
+      return (await Promise.all(own.map(ask))).filter(Boolean)[0] || null;
     }
   } catch (e) {}
-  var d = new Date(), v = 1e6 * d.getFullYear() + 1e4 * (d.getMonth() + 1) + 100 * d.getDate() + d.getHours() + 1;
-  for (var i = 0; i < eps.length; i++) {
-    var r = await http(eps[i] + '?v=' + v, { headers: { 'User-Agent': UA }, timeout: 5000 });
-    if (r.status !== 200) continue;
-    try {
-      var j = JSON.parse(r.text);
-      var site = j && j.c ? atob(j.c) : '';
-      if (/^https?:\/\/[^\/]+/.test(site)) return /^(https?:\/\/[^\/]+)/.exec(site)[1];
-    } catch (e) {}
-  }
   return null;
 }
 
@@ -314,9 +330,13 @@ async function resolveHop(link, label, out, depth) {
 }
 
 async function getStreams(query) {
-  HOSTS = await siteDomains('hdhub', HOSTS); // domains.json first (the repository's), then this list
-  var live = await discoverDomain().catch(function () { return null; }); // the lookup's current domain comes first
+  DEADLINE = Date.now() + BUDGET_MS;
+  // The site's own lookup and domains.json (the repository's list) start together; either may stall for seconds. When the lookup
+  // answers, that is the domain and domains.json is not waited for; only without an answer does domains.json decide.
+  var fromFile = siteDomains('hdhub', HOSTS).catch(function () { return HOSTS; });
+  var live = await discoverDomain().catch(function () { return null; });
   if (live) HOSTS = [live].concat(HOSTS.filter(function (h) { return h !== live; }));
+  else HOSTS = await fromFile;
   console.log('[hdhub] domains: ' + HOSTS.join(' ') + (live ? ' (current: ' + live + ')' : ' (lookup gave none)'));
   var post = await pickPost(query);
   console.log('[hdhub] post: ' + (post ? post.title.slice(0, 60) + ' ' + post.link : 'none found'));
@@ -340,17 +360,22 @@ async function getStreams(query) {
     var i = l.indexOf('|');
     return resolveHop(l.slice(i + 1), l.slice(0, i), out, 0).catch(function () {});
   }));
-  // a PixelDrain file that does not exist (the sites' pages carry a dead one) would cost one of the links tried first
-  var alive = await Promise.all(out.map(async function (st) {
+  // A PixelDrain file that does not exist (the sites' pages carry a dead one) would cost one of the links tried first: each file is
+  // checked once, and when there is no time to check, PixelDrain links are left out (they rank last anyway).
+  out = dedupe(out);
+  var checked = {};
+  out.forEach(function (st) {
     var pd = /pixeldrain\.com\/api\/file\/([A-Za-z0-9]+)/.exec(st.url);
-    if (!pd) return true;
-    var r = await http('https://pixeldrain.com/api/file/' + pd[1] + '/info', { timeout: 8000 });
-    return r.status === 200;
-  }));
-  out = out.filter(function (st, i) { return alive[i]; });
+    if (pd && !checked[pd[1]]) checked[pd[1]] = DEADLINE - Date.now() > 2500
+      ? http('https://pixeldrain.com/api/file/' + pd[1] + '/info', { timeout: 3000 }).then(function (r) { return r.status === 200; })
+      : Promise.resolve(false);
+  });
+  var ids = Object.keys(checked), verdicts = await Promise.all(ids.map(function (id) { return checked[id]; })), okId = {};
+  ids.forEach(function (id, i) { okId[id] = verdicts[i]; });
+  out = out.filter(function (st) { var pd = /pixeldrain\.com\/api\/file\/([A-Za-z0-9]+)/.exec(st.url); return !pd || okId[pd[1]]; });
   // HLS first, then the direct files, PixelDrain last
   function rank(st) { return st.type === 'hls' ? 0 : /pixeldrain/.test(st.url) ? 2 : 1; }
-  out = dedupe(out).map(function (st, i) { return { st: st, i: i }; }).sort(function (a, b) { return rank(a.st) - rank(b.st) || a.i - b.i; }).map(function (x) { return x.st; });
+  out = out.map(function (st, i) { return { st: st, i: i }; }).sort(function (a, b) { return rank(a.st) - rank(b.st) || a.i - b.i; }).map(function (x) { return x.st; });
   console.log('[hdhub] streams: ' + out.length);
   return out;
 }
