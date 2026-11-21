@@ -17,6 +17,8 @@ function normTitle(s) {
   return s.replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').replace(/^ +| +$/g, '');
 }
 
+function _loose(s) { return s.replace(/\b(the|a|an)\b/g, ' ').replace(/ +/g, ''); }
+
 function _stripArticle(s) { return s.replace(/^(the|a|an) /, ''); }
 
 // Every name this title is known by (title, original title, TMDB's aliases), distinct, at most 6.
@@ -90,6 +92,7 @@ function _scoreAgainst(candidate, names) {
     if (!q) return;
     var qs = _stripArticle(q);
     if (c === q || cs === qs || calpha === q.replace(/ /g, '')) best = Math.max(best, 100);
+    else if (_loose(c) && _loose(c) === _loose(q)) best = Math.max(best, 90); // same once "the/a/an" are dropped anywhere
     else if (c.indexOf(q + ' ') === 0 || cs.indexOf(qs + ' ') === 0) best = Math.max(best, 60);
     else if (q.indexOf(c + ' ') === 0 && c.length >= 4) best = Math.max(best, 40);
   });

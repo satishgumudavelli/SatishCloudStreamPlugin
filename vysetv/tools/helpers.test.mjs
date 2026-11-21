@@ -48,6 +48,13 @@ test('titleScore', () => {
   assert.equal(H.titleScore('', q), 0);
 });
 
+test('titleScore: articles anywhere count as the old matchers did', () => {
+  const q = { title: 'Fast & Furious', titles: [] };
+  assert.equal(H.titleScore('Fast & The Furious', q), 90);
+  assert.equal(H.titleScore('Fast and Furious', q), 100);
+  assert.equal(H.titleScore('Matrix 2', { title: 'Matrix', titles: [] }), 60); // never an exact match for "Matrix"
+});
+
 test('rankMatches: films need the year within 1; shows ignore it', () => {
   const items = [
     { t: 'Dune (1984) 1080p' }, { t: 'Dune: Part Two (2024) 4K' }, { t: 'Dune Part Two (2023) CAM' }, { t: 'Dune: Part Two' },
