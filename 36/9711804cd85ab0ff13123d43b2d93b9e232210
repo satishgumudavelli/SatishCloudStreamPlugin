@@ -1,0 +1,31 @@
+vysetv/GUIDE.md
+  s_141489c594600d::t_5df865bf419138 142-143
+vysetv/plugins/vega-moviesmod.js
+  s_141489c594600d::t_f85c58ed7f1a8a 158-165,167-179,187
+vysetv/plugins/vega-topmovies.js
+  s_141489c594600d::t_e64dc2b5c893ac 157-164,166-178,186
+vysetv/plugins/vega-zeefliz.js
+  s_141489c594600d::t_cbdb31cb00116d 144-159,161-162,178
+vysetv/repo.json
+  s_141489c594600d::t_4d682b64accac9 137,170,192
+vysetv/tools/helpers.js
+  s_141489c594600d::t_4844f4d3f0f7af 10,45,59-65,175-192
+vysetv/tools/helpers.test.mjs
+  s_141489c594600d::t_f051bb1f672b2a 104-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "369711804cd85ab0ff13123d43b2d93b9e232210",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
