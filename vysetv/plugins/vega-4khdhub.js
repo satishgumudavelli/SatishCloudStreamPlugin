@@ -1,8 +1,4 @@
 // ---- shared helpers (inlined per plugin) ----
-function norm(s) {
-  return String(s || '').toLowerCase().replace(/&amp;|&#038;/g, ' and ').replace(/&#0?39;|&rsquo;|'/g, '')
-    .replace(/&[a-z#0-9]+;/g, ' ').replace(/[^a-z0-9]+/g, ' ').replace(/\b(the|a|an)\b/g, ' ').replace(/\s+/g, ' ').trim();
-}
 function unent(s) {
   return String(s || '').replace(/&amp;/g, '&').replace(/&#0?39;|&#8217;|&rsquo;/g, "'").replace(/&#8211;|&ndash;/g, '-')
     .replace(/&#038;/g, '&').replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();

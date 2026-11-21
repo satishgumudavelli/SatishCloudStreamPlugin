@@ -12,7 +12,6 @@ const absUrl = (u, base) => /^https?:/i.test(u) ? u : /^\/\//.test(u) ? 'https:'
 const qualityOf = (s) => { s = String(s); const m = /(\d{3,4})p/i.exec(s); if (m) return m[1] + 'p'; return /4k|uhd|2160/i.test(s) ? '2160p' : ''; };
 const typeOf = (u) => /\.m3u8/i.test(u) ? 'hls' : /\.mpd/i.test(u) ? 'dash' : 'mp4';
 const anchors = (html, hrefRe) => { const out = []; const re = /<a\b([^>]*)>([\s\S]*?)(?=<\/a>|<a\b|$)/gi; let m; while ((m = re.exec(html))) { const h = unesc(attrOf(m[1], 'href')); if (h && (!hrefRe || hrefRe.test(h))) out.push({ href: h, text: strip(m[2]), tag: m[1] }); } return out; };
-const tvMatch = (title, q) => { const s = (/season\s*0*(\d+)/i.exec(title) || /\bS0*(\d{1,2})\b/.exec(title) || [])[1]; return s && +s === +q.season; };
 const dedupe = (arr) => { const seen = {}; return arr.filter((x) => (seen[x.url] ? false : (seen[x.url] = 1))); };
 
 // Cookie jar from the set-cookie header(s); http() may join several with ", ".
