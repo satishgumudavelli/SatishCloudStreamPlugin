@@ -101,7 +101,7 @@
     {
       "id": "vega-hdhub4u",
       "name": "HDHub4u",
-      "version": "1",
+      "version": "2",
       "note": "Films and shows via HubCloud and Vidara; finds the current domain itself (not tested on the live site yet)",
       "types": [
         "movie",

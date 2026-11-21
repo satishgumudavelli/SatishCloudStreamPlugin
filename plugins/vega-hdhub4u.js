@@ -176,6 +176,7 @@ async function fetchPost(link) {
   tries.push(link);
   for (var i = 0; i < tries.length; i++) {
     var r = await http(tries[i], { headers: HDH, timeout: 12000 });
+    console.log('[hdhub] page ' + tries[i] + ' -> ' + r.status + (r.error ? ' ' + String(r.error).slice(0, 80) : '') + ' len=' + (r.text || '').length + (/just a moment/i.test(r.text || '') ? ' (Cloudflare challenge)' : ''));
     if (r.status === 200 && r.text.length > 2000) return { url: tries[i], text: r.text };
   }
   return null;
@@ -287,13 +288,16 @@ async function getStreams(query) {
   HOSTS = await siteDomains('hdhub', HOSTS); // domains.json first (the repository's), then this list
   var live = await discoverDomain().catch(function () { return null; }); // the lookup's current domain comes first
   if (live) HOSTS = [live].concat(HOSTS.filter(function (h) { return h !== live; }));
+  console.log('[hdhub] domains: ' + HOSTS.join(' ') + (live ? ' (current: ' + live + ')' : ' (lookup gave none)'));
   var post = await pickPost(query);
+  console.log('[hdhub] post: ' + (post ? post.title.slice(0, 60) + ' ' + post.link : 'none found'));
   if (!post) return [];
   var page = await fetchPost(post.link);
   if (!page) return []; // the site could not be reached
   var base = /^(https?:\/\/[^\/]+)/.exec(page.url)[1];
   var found = collectLinks(page.text, base);
   var links = query.isTv ? (found.eps[query.episode || 1] || []) : found.movie;
+  console.log('[hdhub] page read: ' + links.length + ' download links' + (query.isTv ? ' for episode ' + (query.episode || 1) + ' of ' + Object.keys(found.eps).length : ''));
   // mid qualities first (720p/1080p), small first; the rest after
   links = links.slice().sort(function (a, b) {
     var qa = parseInt(qualityIn(a), 10) || 0, qb = parseInt(qualityIn(b), 10) || 0;
@@ -305,5 +309,6 @@ async function getStreams(query) {
     var i = l.indexOf('|');
     return resolveHop(l.slice(i + 1), l.slice(0, i), out, 0).catch(function () {});
   }));
+  console.log('[hdhub] streams: ' + out.length);
   return dedupe(out);
 }
