@@ -53,6 +53,7 @@ async function resolveFile(base, path, label, out) {
 }
 
 async function getStreams(query) {
+  HOSTS = await siteDomains('movielinkdb', HOSTS); // domains.json first (the repository's), then this list
   if (!query.title) return [];
   var isTv = !!query.isTv, base = '', hits = [], post = null;
   // each search string in turn (the first is as fast as before); later ones only when nothing matched

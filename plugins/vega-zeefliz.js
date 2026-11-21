@@ -140,6 +140,7 @@ async function zeedl(link, label, out) {
 }
 
 async function getStreams(q) {
+  HOSTS = await siteDomains('zeefliz', HOSTS); // domains.json first (the repository's), then this list
   // each search string in turn (the first is as fast as before); later ones only when nothing matched
   var picks = [], qs = searchQueries(q), t0 = Date.now(), imdbTried = false;
   // the site's search for the IMDb id; the post's page must name it (sure, so it goes after the first two strings)

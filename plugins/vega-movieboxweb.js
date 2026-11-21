@@ -2,7 +2,7 @@
 // Chain: /newWeb/searchResult HTML -> /moviesDetail/<path> (Nuxt devalue payload: subject, dubs, seasons)
 // -> /wefeed-h5api-bff/subject/play (mp4/hls/dash streams, one subject per dub language).
 
-const DOMAINS = ['https://officialmoviebox.com']; // ponytail: add rotated domains from domains.json
+let DOMAINS = ['https://officialmoviebox.com'];
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const HDR = { 'User-Agent': UA, Accept: 'application/json', Cookie: 'token=', 'x-client-info': '{"timezone":"Asia/Colombo"}', 'x-source': '' };
 
@@ -45,6 +45,7 @@ async function search(base, title) {
 }
 
 async function getStreams(query) {
+  DOMAINS = await siteDomains('movieBoxWeb', DOMAINS); // domains.json first (the repository's), then this list
   const names = [query.title, query.originalTitle].filter(Boolean);
   for (const base of DOMAINS) {
     let det = null;

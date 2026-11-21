@@ -60,6 +60,7 @@ async function unlock(view) {
 }
 
 async function getStreams(query) {
+  HOSTS = await siteDomains('extrasarl', HOSTS); // domains.json first (the repository's), then this list
   if (query.isTv || !query.title) return [];
   // each search string in turn (the first is as fast as before); later ones only when nothing matched
   var posts = [], qs = searchQueries(query);

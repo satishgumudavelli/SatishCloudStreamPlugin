@@ -199,3 +199,28 @@ test('select is scoped to a node, and navigation works', () => {
   assert.equal(d.selectFirst('ul').children.length, 3);
   assert.match(d.selectFirst('ul').html(), /<li class="x">second<\/li>/);
 });
+
+// ───── domains.json ─────
+test('siteDomains: the file\'s domains first, then the plugin\'s own, no duplicates', async () => {
+  const calls = [];
+  const ctx2 = vm.createContext({
+    http: async (url) => { calls.push(url); return { status: 200, text: JSON.stringify({ domains: [
+      { name: 'Moviesmod', domain: 'moviesmod.tw' }, { name: 'moviesmod', domain: 'https://moviesmod.fi/' },
+      { name: 'Other', domain: 'other.example' }, { name: 'MOVIESMOD', domain: 'moviesmod.tw' } ] }) }; },
+  });
+  vm.runInContext(fs.readFileSync(new URL('./helpers.js', import.meta.url), 'utf8'), ctx2);
+  const a = await ctx2.siteDomains('Moviesmod', ['https://moviesmod.fi', 'https://mirror.example']);
+  assert.deepEqual(J(a), ['https://moviesmod.tw', 'https://moviesmod.fi', 'https://mirror.example']);
+  const b = await ctx2.siteDomains('Other', []);
+  assert.deepEqual(J(b), ['https://other.example']);
+  assert.equal(calls.length, 1); // the file is read once per run
+  assert.deepEqual(J(await ctx2.siteDomains('Unknown', ['http://x.test/'])), ['http://x.test']);
+});
+
+test('siteDomains: an unreadable or broken file leaves the plugin\'s own list', async () => {
+  for (const http of [async () => ({ status: 404, text: '' }), async () => ({ status: 200, text: 'not json' }), async () => { throw new Error('down'); }]) {
+    const c = vm.createContext({ http });
+    vm.runInContext(fs.readFileSync(new URL('./helpers.js', import.meta.url), 'utf8'), c);
+    assert.deepEqual(J(await c.siteDomains('X', ['https://own.example'])), ['https://own.example']);
+  }
+});

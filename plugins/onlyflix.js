@@ -4,7 +4,7 @@
 // Skipped (as unresolvable without a browser): vidapi.xyz, vidfast.vc, CDNM, Balance, and the
 // Peachify/Videasy mirrors (their APIs are dead or need the Android-only crypto path).
 
-const DOMAINS = ['https://onlyflix.to']; // ponytail: add rotated domains from domains.json here
+let DOMAINS = ['https://onlyflix.to'];
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 const slugify = (s) => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/['’.]/g, '')
@@ -89,6 +89,7 @@ async function nontongo(embedUrl, quality, q) {
 }
 
 async function getStreams(q) {
+  DOMAINS = await siteDomains('onlyflix', DOMAINS); // domains.json first (the repository's), then this list
   for (const base of DOMAINS) {
     let page = await findPage(base, q);
     if (!page) continue; // not on this domain

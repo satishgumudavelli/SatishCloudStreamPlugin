@@ -25,6 +25,7 @@ async function page(path) {
 }
 
 async function getStreams(query) {
+  HOSTS = await siteDomains('filmyfly', HOSTS); // domains.json first (the repository's), then this list
   if (query.isTv || !query.title) return [];
   var hit = await searchBest(query, async function (text) {
     var s = await http('https://webfind.filmyflydla.space/search?q=' + encodeURIComponent(text) + '&page=1&per_page=40', { timeout: 15000 });

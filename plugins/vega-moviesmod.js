@@ -1,7 +1,7 @@
 // VyseTV plugin ported from the CloudStream provider "MoviesMod (Vega)" (VegaProvider/MoviesMod.kt).
 // Chain: /search/<title>/ -> post -> links.modpro.blog quality pages -> thenaukriadda shortlink bypass
 // -> driveseed -> direct r2/googleusercontent mkv ("Cloud Download"). Skipped: zip packs, Resume Cloud, Instant.
-const DOMAINS = ['https://moviesmod.fi', 'https://moviesmod.tw']; // root redirects to the live domain
+let DOMAINS = ['https://moviesmod.fi', 'https://moviesmod.tw']; // root redirects to the live domain
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const get = async (url, headers, timeout) => { const o = { headers: Object.assign({ 'User-Agent': UA }, headers || {}), timeout: timeout || 15000 }; const r = await http(url, o); return r.status === 0 || r.status >= 500 ? await http(url, o) : r; }; // one retry: these hosts drop connections
 const post = (url, headers, body) => http(url, { method: 'POST', headers: Object.assign({ 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' }, headers || {}), body, timeout: 15000 });
@@ -199,6 +199,7 @@ function blocks(html) {
 }
 
 async function getStreams(q) {
+  DOMAINS = await siteDomains('Moviesmod', DOMAINS); // domains.json first (the repository's), then this list
   const base = await liveBase(); if (!base) return [];
   const post = await findPost(base, q); if (!post) return [];
   const page = post.page;

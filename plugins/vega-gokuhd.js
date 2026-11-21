@@ -4,7 +4,7 @@
 // Skipped (honest): vcloud/vegadrive/filebee (filebee API is dead)/1fichier/megaup/vikingfile/gofile.
 // Limit: only titles on the newest 6 pages of each list are findable.
 
-const BASE = 'https://gokuhd.nl'; // ponytail: add rotated domains from domains.json here
+let BASE = 'https://gokuhd.nl';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const get = (url) => http(url, { headers: { 'User-Agent': UA, Referer: BASE + '/' }, timeout: 12000 });
 
@@ -40,6 +40,11 @@ const fastdlLinks = (html) => (html.match(/https?:\/\/fastdl\.[a-z]+\/embed\.php
 const qual = (h) => { const m = /(2160|1080|720|480)p?/i.exec(h) || /(4k)/i.exec(h); return m ? (/4k/i.test(m[1]) ? '2160p' : m[1] + 'p') : 'auto'; };
 
 async function getStreams(query) {
+  // the site's domains: domains.json first, then this one; the first that answers is used
+  for (const d of await siteDomains('gokuHD', [BASE])) {
+    const r = await http(d + '/', { headers: { 'User-Agent': UA }, timeout: 6000 });
+    if (r.status >= 200 && r.status < 400) { BASE = d; break; }
+  }
   const isTv = !!query.isTv, season = query.season || 1, episode = query.episode || 1;
   // season ranges ("Season 1 - 18") are checked by coversSeason, so the season is left out of the title match
   const posts = rankMatches(await listPosts(isTv ? 'series' : 'movies'), query, (p) => { const i = parseTitle(ent(p.raw)); return { title: i.title, year: isTv ? null : i.year }; })
