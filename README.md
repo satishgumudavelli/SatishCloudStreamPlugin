@@ -1,58 +1,77 @@
-**⚠️ This is currently under development, dont use it yet if you're not comfortable with constantly merging new changes**
+# VyseTV scraper plugins
 
-# `Cloudstream3 Plugin Repo Template`
+**Writing one?** Read [GUIDE.md](GUIDE.md). To have an AI write it for you, use [PROMPT.md](PROMPT.md).
 
-Template for a [Cloudstream3](https://github.com/recloudstream) plugin repo
+A plugin is a JavaScript file that finds the streams for a film or an episode. Plugins live in a
+repository (a folder on GitHub, or any web server) described by a `repo.json`.
 
-**⚠️ Make sure you check "Include all branches" when using this template**
+Add one in **Settings → Sources → Plugins** by pasting the link to its `repo.json`
+(a `github.com/…/blob/…/repo.json` page link and a bare `github.com/user/repo` link also work;
+the latter reads `repo.json` on the default branch). Every plugin it lists becomes a source in the
+list above: reorder it, switch it off, and the player asks it like the built-in sources.
+The ✓ **refresh** button on the repository downloads its scripts again.
 
- 
-## Getting started with writing your first plugin
+## repo.json
 
-This template includes 1 example plugin.
+```json
+{
+  "name": "My repository",
+  "plugins": [
+    { "id": "mysite", "name": "My Site", "version": "1", "note": "Films, 1080p",
+      "types": ["movie", "tv"], "url": "mysite.js" }
+  ]
+}
+```
 
-1. Open the root build.gradle.kts, read the comments and replace all the placeholders
-2. Familiarize yourself with the project structure. Most files are commented
-3. Build or deploy your first plugin using:
-   - Windows: `.\gradlew.bat MultimoviesProvider:make` or `.\gradlew.bat MultimoviesProvider:deployWithAdb`
-   - Linux & Mac: `./gradlew MultimoviesProvider:make` or `./gradlew MultimoviesProvider:deployWithAdb`
+* `id`: letters, digits, `_ . -` (kept stable: it names the source in your saved order).
+* `url`: the script, absolute or relative to `repo.json`. At most 100 plugins, 512 KB each.
+* `types`: `movie`, `tv` or both (a `movie`-only plugin is not asked for episodes).
 
+## The script
 
-## Granting All Files Access on Newer Android Devices
+Define `getStreams(query)` (it may be `async`). See `example/demo.js`.
 
-For local plugin testing, you need to grant the app "All Files Access" on newer Android devices (Android 11 and above). Here’s how to do it:
+```js
+// query: { tmdbId, imdbId, type: 'movie'|'tv', isTv, title, originalTitle, year, season, episode }
+async function getStreams(query) {
+  const r = await http('https://site.example/api?q=' + encodeURIComponent(query.title));
+  const data = JSON.parse(r.text);
+  return [{ url: data.m3u8, type: 'hls', quality: '1080p', server: 'Site',
+            headers: { Referer: 'https://site.example/' } }];
+}
+```
 
-### Using ADB
+Each returned stream: `url` (http/https, required), `type` (`hls`, `dash` or `mp4`; guessed from the
+link if left out), `quality`, `server`, `label`, `audio` (the language, e.g. `Hindi`), `headers`.
+The player checks that a stream really serves video before it plays it.
 
-* `adb shell appops set --uid PACKAGE_NAME MANAGE_EXTERNAL_STORAGE allow`
-* Replace `PACKAGE_NAME` with the name of the package for the Cloudstream3 version you are using:
-   - debug: `com.lagradost.cloudstream3.prerelease.debug`
-   - prerelease: `com.lagradost.cloudstream3.prerelease`
-   - stable: `com.lagradost.cloudstream3`
+Available to the script: `http(url, {method, headers, body, timeout})`, `JSON`, `RegExp`, `Promise`,
+`setTimeout`, `btoa`/`atob`, `console.log`. There is no DOM: read pages with regular expressions
+or `JSON.parse`.
 
-### Manually
+## Safety
 
-1. **Open Settings**: Go to your device’s Settings menu.
+Scripts run in an isolated QuickJS engine with a time limit (20 seconds). They have no access to
+files or other apps, and `http()` refuses this device's own network (localhost, 192.168.x.x,
+10.x.x.x…), so a plugin cannot reach TorrServer, a router or other devices. Scripts are downloaded
+only when you add or refresh a repository, never in the background. Still: a plugin decides which
+streams you are shown, so only add repositories you trust. Plugins are stored on this device and
+are not synced to your account.
 
-2. **Navigate to Special Access**:
-   - Tap on "Apps & notifications" or "Apps".
-   - Select "Special app access" or "Special access".
+## This repository
 
-3. **Select All Files Access**:
-   - Tap on "All files access".
-   - It may be under the three vertical dots menu towards the top of the screen.
+`repo.json` lists the plugins in `plugins/`, ported from the CloudStream providers in this repository
+(MultiShows, Movies4u, Cineapse and some Vega sites are not here: their hosts are dead, behind a
+browser challenge, or need a real browser).
 
-4. **Grant Access to the App**: Find the app in the list and tap on it to toggle it, if it is not already enabled.
+Add it in VyseTV → Settings → Sources → Plugins:
 
-6. **Restart the App**: Close and reopen the app to apply the changes.
+    https://raw.githubusercontent.com/satishgumudavelli/SatishCloudStreamPlugin/refs/heads/vysetv-js-plugins/repo.json
 
+Test a plugin from a terminal (probes every stream it returns):
 
-## License
+    node tools/run-plugin.mjs plugins/almostott.js movie "Oppenheimer" 2023 872585 tt15398776
+    node tools/run-plugin.mjs plugins/almostott.js tv "Breaking Bad" 2008 1396 tt0903747 1 1
 
-Everything in this repo is released into the public domain. You may use it however you want with no conditions whatsoever
-
-
-## Attribution
-
-This template as well as the gradle plugin and the whole plugin system is **heavily** based on [Aliucord](https://github.com/Aliucord).
-*Go use it, it's a great mobile discord client mod!*
+Sites move and block often, so a plugin that works today may need updating: that is what the refresh
+button on the repository is for.
