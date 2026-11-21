@@ -1,0 +1,25 @@
+README.md
+  s_141489c594600d::t_5ab615ca53103c 76-79
+plugins/vega-hdhub4u.js
+  s_141489c594600d::t_12a3965dc45e2f 1-296
+repo.json
+  s_141489c594600d::t_73b923a44bee49 101-111
+tools/hdhub.test.mjs
+  s_141489c594600d::t_1e3596649edb51 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1f2f6db1194b265065e4026ddee970de7d64d1d",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
