@@ -28,15 +28,24 @@ function load(routes) {
   return ctx;
 }
 
-const LANDING = `<html><body><a href="https://hdhub4u.ms/" class="btn">View Full Site</a><a href="https://www.facebook.com/x">fb</a></body></html>`;
+const b64s = (o) => b64(JSON.stringify(o));
+// the landing page: an inline script with its list of lookup endpoints, base64-coded like the real one
+const LANDING = `<html><body><script>let _d,_pg="/?re=hdhub&t=1";const _rx=[atob("${b64('https://lookup-one.test/host/')}"),atob("${b64('https://lookup-two.test/v2/host')}")],$=t=>1;</script></body></html>`;
+const answer = (site) => ({ text: JSON.stringify({ h: b64('hdhub4u.fr'), c: b64(site), t: 1 }) });
 
-test('discoverDomain: the landing page\'s link, followed to where it ends', async () => {
-  let c = load([[/hdhub4u\.fr\/$/, () => ({ text: LANDING })], [/hdhub4u\.ms/, () => ({ url: 'https://new99.hdhub4u.cl/', text: 'x' })]]);
-  assert.equal(await c.discoverDomain(), 'https://new99.hdhub4u.cl');
-  // the link ends back on the landing page (site not served to this visitor): nothing
-  c = load([[/hdhub4u\.fr\/$/, () => ({ text: LANDING })], [/hdhub4u\.ms/, () => ({ url: 'https://hdhub4u.fr/', text: 'x' })]]);
-  assert.equal(await c.discoverDomain(), null);
+test('discoverDomain: the lookup endpoints the landing page lists, "c" is the current site', async () => {
+  const c = load([[/hdhub4u\.fr\/$/, () => ({ text: LANDING })], [/lookup-one\.test/, () => ({ status: 500 })], [/lookup-two\.test/, () => answer('https://new99.hdhub4u.cl/?utm=mn1')]]);
+  assert.equal(await c.discoverDomain(), 'https://new99.hdhub4u.cl'); // first endpoint failed, the second answered; path and query dropped
+  const asked = c.__calls.map((x) => x.url).filter((u) => /lookup/.test(u));
+  assert.match(asked[0], /^https:\/\/lookup-one\.test\/host\/\?v=\d{10}$/); // ?v=yyyymmddhh
+});
+
+test('discoverDomain: the plugin\'s own endpoints when the landing page is unreadable; nothing when none answers', async () => {
+  let c = load([[/hdhub4u\.fr/, () => ({ status: 503 })], [/h4\.suncdn\.org\/host\//, () => answer('https://new15.hdhub4u.cl/')]]);
+  assert.equal(await c.discoverDomain(), 'https://new15.hdhub4u.cl');
   c = load([[/hdhub4u\.fr/, () => ({ status: 503 })]]);
+  assert.equal(await c.discoverDomain(), null);
+  c = load([[/hdhub4u\.fr/, () => ({ text: LANDING })], [/lookup/, () => ({ text: JSON.stringify({ h: b64('hdhub4u.fr') }) })]]); // an answer without "c"
   assert.equal(await c.discoverDomain(), null);
 });
 
@@ -133,7 +142,7 @@ test('resolveHop: hubdrive page -> its button; hubcdn "Instant" link; playdrive 
 test('getStreams: the whole chain on a made-up site, and the post is fetched from the discovered domain', async () => {
   const c = load([
     [/hdhub4u\.fr\/$/, () => ({ text: LANDING })],
-    [/hdhub4u\.ms/, () => ({ url: 'https://live.hdhub4u.cl/', text: 'x' })],
+    [/lookup-one\.test/, () => answer('https://live.hdhub4u.cl/?utm=mn1')],
     [/raw\.githubusercontent\.com/, () => ({ status: 404 })],
     index([hit('Oppenheimer (2023) BluRay 1080p', 'https://dead.old.domain/oppenheimer-2023/', 'tt15398776')]),
     [/live\.hdhub4u\.cl\/oppenheimer-2023\//, () => ({ text: MOVIE_PAGE.replace('</body>', '<!-- ' + 'x'.repeat(2100) + ' --></body>') })],

@@ -103,8 +103,8 @@ async function hubcloud(url, label, out, tag) {
 // current domain -> its download links: greenmotors short link, hubdrive, hubcloud, hblinks, hubcdn, hubstream,
 // vidara -> direct file / HLS links. Playdrive "WATCH" embeds need a WebView and are skipped.
 //
-// The site's domain changes all the time. The landing page https://hdhub4u.fr/ always links to the current one (its
-// "View Full Site" button): the plugin reads that first, then domains.json (name "hdhub"), then its own list.
+// The site's domain changes all the time. The landing page https://hdhub4u.fr/ looks the current one up with a few
+// endpoints (see discoverDomain): the plugin does the same first, then uses domains.json (name "hdhub"), then its own list.
 //
 // NOT TESTED against the live site: hdhub4u's domains reset the connection from the author's network. The search
 // step was checked live, and HubCloud / greenmotors are the same code as vega-4khdhub.js; the page reading follows the
@@ -117,19 +117,32 @@ var HDH = { Cookie: 'xla=s4t', Referer: 'https://google.com', 'User-Agent': UA }
 var SEARCH = 'https://search.pingora.fyi/collections/post/documents/search';
 var SERIES_RE = /\bseason\b|\bS\d{1,2}\b|web series/i;
 
-// The current domain: the landing page's "View Full Site" link, followed through its redirects. A link that ends back
-// on the landing page (the site is not served to this visitor) gives nothing.
+// The current domain, the way the landing page itself finds it: it asks a list of lookup endpoints for
+// <endpoint>?v=<year month day hour> and gets JSON back: "c" is the current site (base64), "h" the landing domain.
+// The landing page carries the list (it changes), so it is read first; ours is the fallback.
+var LOOKUPS = ['https://h4.suncdn.org/host/', 'https://points.topapii.com/host/', 'https://ml.theapii.org/host/', 'https://dns.pingora.fyi/v2/host', 'https://cdn.hub4u.cloud/host/'];
 async function discoverDomain() {
-  var r = await http(LANDING + '/', { headers: { 'User-Agent': UA }, timeout: 8000 });
-  if (r.status !== 200) return null;
-  var landingHost = LANDING.replace(/^https?:\/\//, '');
-  var links = parseHtml(r.text).select('a[href^=http]').filter(function (a) { return hostOf(a.attr('href')) !== landingHost && /hdhub/i.test(hostOf(a.attr('href'))); });
-  var pick = links.filter(function (a) { return /full site/i.test(a.text()); })[0] || links[0];
-  if (!pick) return null;
-  var f = await http(pick.attr('href'), { headers: HDH, timeout: 10000 });
-  var end = f.url || pick.attr('href');
-  if (f.status === 0 || hostOf(end) === landingHost) return null;
-  return /^(https?:\/\/[^\/]+)/.exec(end)[1];
+  var eps = LOOKUPS.slice();
+  try {
+    var land = await http(LANDING + '/', { headers: { 'User-Agent': UA }, timeout: 6000 });
+    var m = land.status === 200 && /const _rx=\[([^\]]*)\]/.exec(land.text);
+    if (m) {
+      var own = [], re = /atob\("([^"]+)"\)/g, x;
+      while ((x = re.exec(m[1]))) { try { var u = atob(x[1]); if (/^https?:\/\//.test(u)) own.push(u); } catch (e) {} }
+      if (own.length) eps = own.concat(eps.filter(function (e) { return own.indexOf(e) < 0; }));
+    }
+  } catch (e) {}
+  var d = new Date(), v = 1e6 * d.getFullYear() + 1e4 * (d.getMonth() + 1) + 100 * d.getDate() + d.getHours() + 1;
+  for (var i = 0; i < eps.length; i++) {
+    var r = await http(eps[i] + '?v=' + v, { headers: { 'User-Agent': UA }, timeout: 5000 });
+    if (r.status !== 200) continue;
+    try {
+      var j = JSON.parse(r.text);
+      var site = j && j.c ? atob(j.c) : '';
+      if (/^https?:\/\/[^\/]+/.test(site)) return /^(https?:\/\/[^\/]+)/.exec(site)[1];
+    } catch (e) {}
+  }
+  return null;
 }
 
 function cleanTitle(t) { return unent(String(t || '').replace(/Download/gi, '')); }
@@ -272,7 +285,7 @@ async function resolveHop(link, label, out, depth) {
 
 async function getStreams(query) {
   HOSTS = await siteDomains('hdhub', HOSTS); // domains.json first (the repository's), then this list
-  var live = await discoverDomain().catch(function () { return null; }); // the landing page's current one comes first
+  var live = await discoverDomain().catch(function () { return null; }); // the lookup's current domain comes first
   if (live) HOSTS = [live].concat(HOSTS.filter(function (h) { return h !== live; }));
   var post = await pickPost(query);
   if (!post) return [];
