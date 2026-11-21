@@ -73,9 +73,11 @@ Test a plugin from a terminal (probes every stream it returns):
     node tools/run-plugin.mjs plugins/almostott.js movie "Oppenheimer" 2023 872585 tt15398776
     node tools/run-plugin.mjs plugins/almostott.js tv "Breaking Bad" 2008 1396 tt0903747 1 1
 
-HDHub4u: its site's connections are reset at random from some networks (about half of the handshakes from the machine it was
-written on, and at times all of them), so the plugin retries its page fetch. `node tools/diagnose-host.mjs new15.hdhub4u.cl`
-shows stage by stage where a connection stops and how steady it is. Its logic has tests (`node --test tools/hdhub.test.mjs`).
+HDHub4u: its link extraction and every hop were checked against a real saved post (The Beast 2026): all 7 download rows and the
+PLAYER-2 row resolve, and all 8 streams play (`tools/fixtures/` holds the real page's link section and a real PLAYER-2 page).
+Its site's connections are reset at random from some networks (from the machine it was written on, about half of the handshakes,
+at times all of them), so the plugin retries its page fetch. `node tools/diagnose-host.mjs new15.hdhub4u.cl` shows stage by stage
+where a connection stops and how steady it is.
 
 Sites move and block often, so a plugin that works today may need updating: that is what the refresh
 button on the repository is for.

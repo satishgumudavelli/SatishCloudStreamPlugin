@@ -112,7 +112,7 @@ async function hubcloud(url, label, out, tag) {
 // the logic also has tests against a made-up site (tools/hdhub.test.mjs).
 var HOSTS = ['https://new15.hdhub4u.cl'];
 var LANDING = 'https://hdhub4u.fr';
-var MAX = 6; // resolved links per request (script time limit is 20 s)
+var MAX = 8; // resolved links per request (script time limit is 20 s)
 var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 var HDH = { Cookie: 'xla=s4t', Referer: 'https://google.com', 'User-Agent': UA };
 var SEARCH = 'https://search.pingora.fyi/collections/post/documents/search';
@@ -190,7 +190,8 @@ async function fetchPost(link) {
 }
 
 function qualityIn(t) { var m = /\b(480|720|1080|2160)p\b|\b4k\b/i.exec(t || ''); return m ? m[0] : ''; }
-function isHostLink(h) { return /hubdrive|hubcloud|greenmotors\.|vidara\.|vidaraa\.|hubstream\.|hubcdn\./i.test(h); }
+function isHostLink(h) { return /hubdrive|hubcloud|greenmotors\.|vidara\.|vidaraa\.|hubstream\.|hubcdn\.|hdstream4u\./i.test(h); }
+function isWatchText(t) { return /^\s*(watch|player)/i.test(t || ''); } // the "WATCH" and "PLAYER-2" rows: player pages, not downloads
 function ownText(el) { return unent(el.kids.filter(function (k) { return typeof k === 'string'; }).join('')) || el.text(); }
 
 // The links of a post. A film: every download-host link whose text names a quality. A show: after a "Single Episode"
@@ -218,11 +219,11 @@ function collectLinks(html, base) {
         if (ql) q = ql;
         return;
       }
-      var href = el.attr('href'), isWatch = /^\s*watch/i.test(el.text());
+      var href = el.attr('href'), isWatch = isWatchText(el.text());
       if (!inSingle || !(isHostLink(href) || isWatch)) return;
       var qual = qualityIn(el.text()) || q;
       var ep = cur > 0 ? cur : (counters[qual] = (counters[qual] || 0) + 1);
-      var kind = isWatch || /vidara\.|vidaraa\.|hubstream\./.test(href) ? 'Watch' : (qual || 'Unknown');
+      var kind = isWatch || /vidara\.|vidaraa\.|hubstream\.|hdstream4u\./.test(href) ? 'Watch' : (qual || 'Unknown');
       (eps[ep] = eps[ep] || []).push(kind + '|' + absUrl(base + '/', href));
     });
     return eps;
@@ -232,11 +233,22 @@ function collectLinks(html, base) {
   var movie = [];
   if (!series) {
     c.select('a[href]').forEach(function (a) {
-      if (isHostLink(a.attr('href')) && qualityIn(a.text()))
-        movie.push(a.text().replace(/\s+/g, ' ').replace(/^ +| +$/g, '').replace(/\|/g, '/') + '|' + absUrl(base + '/', a.attr('href')));
+      var href = a.attr('href'), text = a.text().replace(/\s+/g, ' ').replace(/^ +| +$/g, '').replace(/\|/g, '/');
+      if (isHostLink(href) && qualityIn(text)) movie.push(text + '|' + absUrl(base + '/', href));
+      else if (isHostLink(href) && isWatchText(text)) movie.push('Watch|' + absUrl(base + '/', href));
     });
   }
   return { eps: eps, movie: movie, series: series };
+}
+
+// Dean Edwards' p.a.c.k.e.r: eval(function(p,a,c,k,e,d){...}('payload',base,count,'words'.split('|'))): the text it would run
+function unpack(src) {
+  var m = /eval\(function\(p,a,c,k,e,(?:r|d)\)\{[\s\S]*?\}\('([\s\S]*?)',(\d+),(\d+),'([\s\S]*?)'\.split\('\|'\)/.exec(src);
+  if (!m) return null;
+  var p = m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'), a = +m[2], c = +m[3], k = m[4].split('|');
+  function e(n) { return (n < a ? '' : e(parseInt(n / a, 10))) + ((n = n % a) > 35 ? String.fromCharCode(n + 29) : n.toString(36)); }
+  while (c--) if (k[c]) p = p.replace(new RegExp('\\b' + e(c) + '\\b', 'g'), k[c]);
+  return p;
 }
 
 // One link to direct streams (resolveHop in the Kotlin provider): follows hubdrive / greenmotors / hblinks / hubstream
@@ -252,6 +264,16 @@ async function resolveHop(link, label, out, depth) {
     if (j && /^https?:/.test(j.streaming_url || '')) out.push({ url: j.streaming_url, type: 'hls', quality: qualityOf(label) || 'Auto', server: 'HDHub4u Vidara', label: label.slice(0, 60), headers: { Referer: 'https://vidara.to/' } });
   } else if (/playdrive\./.test(link)) {
     return; // needs a WebView to unseal its stream
+  } else if (/hdstream4u\./.test(link)) {
+    // "PLAYER-2": a VidHide-style player page; its packed script has var links={"hls2": ".../master.m3u8?...", ...}
+    var pg = await http(link, { headers: { 'User-Agent': UA, Referer: HOSTS[0] + '/' }, timeout: 12000 });
+    var code2 = unpack(pg.text || '');
+    var lm = code2 && /var links\s*=\s*(\{[^}]*\})/.exec(code2);
+    if (!lm) return;
+    var links; try { links = JSON.parse(lm[1]); } catch (e) { return; }
+    var hls = links.hls4 || links.hls2 || links.hls3;
+    var origin = /^(https?:\/\/[^\/]+)/.exec(link)[1];
+    if (/^https?:/.test(hls || '')) out.push({ url: hls, type: 'hls', quality: 'Auto', server: 'HDHub4u Player 2', label: 'Hindi + English', headers: { Referer: origin + '/' } });
   } else if (/hubstream\./.test(link)) {
     var id = link.indexOf('#') >= 0 ? link.slice(link.indexOf('#') + 1) : '';
     if (!id) return;
@@ -305,8 +327,10 @@ async function getStreams(query) {
   var found = collectLinks(page.text, base);
   var links = query.isTv ? (found.eps[query.episode || 1] || []) : found.movie;
   console.log('[hdhub] page read: ' + links.length + ' download links' + (query.isTv ? ' for episode ' + (query.episode || 1) + ' of ' + Object.keys(found.eps).length : ''));
-  // mid qualities first (720p/1080p), small first; the rest after
+  // player pages first (HLS starts at once), then mid qualities (720p/1080p), small first; the rest after
   links = links.slice().sort(function (a, b) {
+    var wa = /^Watch\|/.test(a) ? 0 : 1, wb = /^Watch\|/.test(b) ? 0 : 1;
+    if (wa !== wb) return wa - wb;
     var qa = parseInt(qualityIn(a), 10) || 0, qb = parseInt(qualityIn(b), 10) || 0;
     var ra = qa >= 720 && qa <= 1080 ? 0 : 1, rb = qb >= 720 && qb <= 1080 ? 0 : 1;
     return ra - rb || sizeMB(a) - sizeMB(b);
@@ -316,8 +340,19 @@ async function getStreams(query) {
     var i = l.indexOf('|');
     return resolveHop(l.slice(i + 1), l.slice(0, i), out, 0).catch(function () {});
   }));
+  // a PixelDrain file that does not exist (the sites' pages carry a dead one) would cost one of the links tried first
+  var alive = await Promise.all(out.map(async function (st) {
+    var pd = /pixeldrain\.com\/api\/file\/([A-Za-z0-9]+)/.exec(st.url);
+    if (!pd) return true;
+    var r = await http('https://pixeldrain.com/api/file/' + pd[1] + '/info', { timeout: 8000 });
+    return r.status === 200;
+  }));
+  out = out.filter(function (st, i) { return alive[i]; });
+  // HLS first, then the direct files, PixelDrain last
+  function rank(st) { return st.type === 'hls' ? 0 : /pixeldrain/.test(st.url) ? 2 : 1; }
+  out = dedupe(out).map(function (st, i) { return { st: st, i: i }; }).sort(function (a, b) { return rank(a.st) - rank(b.st) || a.i - b.i; }).map(function (x) { return x.st; });
   console.log('[hdhub] streams: ' + out.length);
-  return dedupe(out);
+  return out;
 }
 
 // ---- domains.json (snippet: tools/site-domains.js) ----

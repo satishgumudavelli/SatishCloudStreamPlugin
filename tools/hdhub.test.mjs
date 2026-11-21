@@ -158,3 +158,56 @@ test('getStreams: the whole chain on a made-up site, and the post is fetched fro
   const down = load([index([hit('Oppenheimer (2023) BluRay 1080p', 'https://dead.old.domain/oppenheimer-2023/', 'tt15398776')])]);
   assert.deepEqual(J(await down.getStreams({ isTv: false, title: 'Oppenheimer', titles: ['Oppenheimer'], year: 2023, imdbId: 'tt15398776' })), []);
 });
+
+// ───── the real page (tools/fixtures: the download-links part of a saved HDHub4u post, and a real PLAYER-2 page) ─────
+const fixture = (n) => fs.readFileSync(new URL('./fixtures/' + n, import.meta.url), 'utf8');
+
+test('the real page: seven download rows, the PLAYER-2 row, and no playdrive (it needs a WebView)', () => {
+  const c = load([]);
+  const r = c.collectLinks(fixture('the-beast-links.html'), 'https://new15.hdhub4u.cl');
+  assert.equal(r.series, false);
+  const rows = J(r.movie).map((x) => [x.split('|')[0], x.split('|')[1].replace(/^(https?:\/\/[^\/]+).*/, '$1')]);
+  assert.deepEqual(rows, [
+    ['480p\u26a1[400MB]', 'https://hubcdn.club'],
+    ['720p 10Bit HEVC [770MB]', 'https://hubdrive.blog'],
+    ['720p x264 [980MB]', 'https://greenmotors.club'],
+    ['1080p 10Bit HEVC [1.7GB]', 'https://hubdrive.blog'],
+    ['1080p x264 [2.1GB]', 'https://greenmotors.club'],
+    ['1080p WEB-DL [4.7GB]', 'https://hubdrive.blog'],
+    ['4K [2160p SDR WEB-DL \u2013 11.3GB]', 'https://hubdrive.blog'],
+    ['Watch', 'https://hdstream4u.com'],
+  ]);
+  assert.ok(!J(r.movie).some((x) => /playdrive/.test(x)));
+});
+
+test('the real PLAYER-2 page: the packed script gives the HLS master, with the player\'s own referer', async () => {
+  const c = load([[/hdstream4u\.com\/file\//, () => ({ text: fixture('hdstream4u-player.html') })]]);
+  const out = [];
+  await c.resolveHop('https://hdstream4u.com/file/q4pxo95ubesi', 'Watch', out, 0);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].type, 'hls');
+  assert.match(out[0].url, /^https:\/\/[^/]+\/hls2\/.*master\.m3u8\?/);
+  assert.deepEqual(J(out[0].headers), { Referer: 'https://hdstream4u.com/' });
+  assert.equal(c.unpack('no packed script here'), null);
+});
+
+test('getStreams on the real page: HLS first, dead PixelDrain dropped, the rest in order', async () => {
+  const post = fixture('the-beast-links.html').replace('</body>', '<!-- ' + 'x'.repeat(2100) + ' --></body>');
+  const c = load([
+    [/hdhub4u\.fr\/$/, () => ({ status: 503 })],
+    [/raw\.githubusercontent\.com|\/host\//, () => ({ status: 404 })],
+    index([hit('The Beast (2026) WEB-DL', 'https://old.test/the-beast-2026/', 'tt1')]),
+    [/new15\.hdhub4u\.cl\/the-beast-2026\//, () => ({ text: post })],
+    [/hdstream4u\.com\/file\//, () => ({ text: fixture('hdstream4u-player.html') })],
+    // every other link: a hubcloud-style answer would need its pages; here the hubcdn row answers directly
+    [/hubcdn\.club\/file\//, () => ({ text: `<script>var reurl = "https://hubcdn.club/x?r=${encodeURIComponent(b64('https://hubcdn.club/dl/?link=https://r2.test/beast-480.mkv'))}";</script>` })],
+    [/pixeldrain\.com\/api\/file\/dead1\/info/, () => ({ status: 404 })],
+    [/hubdrive\.blog|greenmotors\.club/, () => ({ text: '<a class="btn-success1" href="https://pixeldrain.com/api/file/dead1?download">x</a>' })],
+  ]);
+  const r = await c.getStreams({ isTv: false, title: 'The Beast', originalTitle: 'The Beast', titles: ['The Beast'], year: 2026, imdbId: 'tt1' });
+  const kinds = J(r).map((s) => `${s.type}:${s.server}`);
+  assert.equal(kinds[0], 'hls:HDHub4u Player 2'); // the player page first
+  assert.ok(kinds.includes('mp4:HDHub4u HubCDN'));
+  assert.ok(!J(r).some((s) => /dead1/.test(s.url))); // the dead PixelDrain file is gone
+});
+
