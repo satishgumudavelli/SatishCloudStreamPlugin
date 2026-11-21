@@ -1,0 +1,69 @@
+GUIDE.md
+  s_141489c594600d::t_b7564e956907da 135-151
+PROMPT.md
+  s_141489c594600d::t_9b32ff42cc50e7 54-55
+plugins/almostott.js
+  s_141489c594600d::t_27d5338a6b3fdb 103-140
+plugins/cinemaos.js
+  s_141489c594600d::t_ab6b8eb1ff9225 261-298
+plugins/framemovie.js
+  s_141489c594600d::t_50d8338c3c68bb 129-166
+plugins/onlyflix.js
+  s_141489c594600d::t_943ebcda834dfd 118,136,148-185
+plugins/pixelflix.js
+  s_141489c594600d::t_af092c430f109a 62-99
+plugins/vega-4khdhub.js
+  s_141489c594600d::t_f8eb1c198dcd06 176,194,206-243
+plugins/vega-autoembed.js
+  s_141489c594600d::t_d9d74db2febfc3 84-121
+plugins/vega-extramoviessarl.js
+  s_141489c594600d::t_85b06c21bfd21d 113,131,143-180
+plugins/vega-filmyfly.js
+  s_141489c594600d::t_20a0882e4e5523 77,95,107-144
+plugins/vega-gokuhd.js
+  s_141489c594600d::t_5c5f7df67f9071 96,114,126-163
+plugins/vega-hdhub4u.js
+  s_141489c594600d::t_df4d7154b2ebcc 180,379,397,409-446
+plugins/vega-movieboxweb.js
+  s_141489c594600d::t_18de945ea54d30 108,126,138-175
+plugins/vega-movielinkdb.js
+  s_141489c594600d::t_c5e7aebfc8ecbb 107,125,137-174
+plugins/vega-moviesmod.js
+  s_141489c594600d::t_bf503f794d3381 231,249,261-298
+plugins/vega-multimovies.js
+  s_141489c594600d::t_9dfaed6f4a1c2e 29-66
+plugins/vega-mxplayer.js
+  s_141489c594600d::t_bf3113fbe9ab9c 51-88
+plugins/vega-topmovies.js
+  s_141489c594600d::t_9bafe5cf1f3ed7 227,245,257-294
+plugins/vega-uhdmovies.js
+  s_141489c594600d::t_adb5250abd5914 220,238,250-287
+plugins/vega-zeefliz.js
+  s_141489c594600d::t_b2de513e235cec 216,234,246-283
+tools/domains.test.mjs
+  s_141489c594600d::t_7f05f408020b38 40-41
+tools/run-guard.js
+  s_141489c594600d::t_589ba04e0ea0c2 1-37
+tools/run-guard.test.mjs
+  s_141489c594600d::t_efed1ce074d9ff 1-90
+tools/site-domains.js
+  s_141489c594600d::t_225b4e070e06a2 12,30
+repo.json
+  s_141489c594600d::t_03cd03adaf901b 7,18,29,40,51,62,73,84,94,104,115,126,137,148,159,170,181,192,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28d1509ef55e46e726ff66772599645aca3330ec",
+  "prompts": {},
+  "sessions": {
+    "s_141489c594600d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e3f0528-2853-4475-bde1-04e01ff395d1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
