@@ -106,9 +106,10 @@ async function hubcloud(url, label, out, tag) {
 // The site's domain changes all the time. The landing page https://hdhub4u.fr/ looks the current one up with a few
 // endpoints (see discoverDomain): the plugin does the same first, then uses domains.json (name "hdhub"), then its own list.
 //
-// Checked live (once the connection got through): the page was read and the chain gave streams. The connection to the site is flaky (random resets), so the page fetch is retried. The search
-// step was checked live, and HubCloud / greenmotors are the same code as vega-4khdhub.js; the page reading follows the
-// Kotlin provider's selectors ("captured live 2026-11-13") and is only tested against a made-up page (tools/hdhub.test.mjs).
+// Checked against the live site when the connection got through: the post page was read (7 download links for Oppenheimer) and the
+// chain gave 11 streams (6 of 8 played). From some networks the connection to the site is reset at random (see
+// tools/diagnose-host.mjs), so the page fetch is retried a few times. The page reading follows the Kotlin provider's selectors;
+// the logic also has tests against a made-up site (tools/hdhub.test.mjs).
 var HOSTS = ['https://new15.hdhub4u.cl'];
 var LANDING = 'https://hdhub4u.fr';
 var MAX = 6; // resolved links per request (script time limit is 20 s)
