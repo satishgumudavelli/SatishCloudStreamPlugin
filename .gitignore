@@ -1,0 +1,11 @@
+# This branch is only the VyseTV plugin repository (repo.json, plugins/, tools/ and the docs).
+# Everything else in this folder (the CloudStream Kotlin projects, build output, IDE files) is ignored here;
+# those live on master.
+/*
+!/.gitignore
+!/README.md
+!/GUIDE.md
+!/PROMPT.md
+!/repo.json
+!/plugins/
+!/tools/
