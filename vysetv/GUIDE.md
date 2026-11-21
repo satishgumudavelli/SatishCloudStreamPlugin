@@ -232,8 +232,12 @@ add the repository in VyseTV → Settings → Sources → Plugins, play a title 
 * `types`: `["movie"]`, `["tv"]` or both. A movie-only plugin is never asked for episodes.
 * Raise `version` when you change the script.
 
-3. Commit and push. Users press the **refresh** button on the repository in VyseTV to get the new
-   script. Scripts are never updated in the background.
+3. Commit and push. Scripts are never changed in the background by default: a user presses the **refresh**
+   button on the repository, or switches on **Update automatically** (Settings → Sources → Plugins). With it
+   on, VyseTV checks the repositories when it starts (at most once a day) and downloads **only the plugins
+   whose `version` changed**, so **raise `version` whenever you change a script** (a plugin with no version is
+   downloaded every time). A plugin that disappears from `repo.json` is removed, and a repository that can't be
+   reached keeps what it has. Raw GitHub links can lag by a few minutes after a push.
 
 ## 7. Common problems
 
