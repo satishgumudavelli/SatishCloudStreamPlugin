@@ -1,5 +1,7 @@
 # VyseTV scraper plugins
 
+**Writing one?** Read [GUIDE.md](GUIDE.md). To have an AI write it for you, use [PROMPT.md](PROMPT.md).
+
 A plugin is a JavaScript file that finds the streams for a film or an episode. Plugins live in a
 repository (a folder on GitHub, or any web server) described by a `repo.json`.
 

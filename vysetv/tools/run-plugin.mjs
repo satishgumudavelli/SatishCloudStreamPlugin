@@ -31,7 +31,7 @@ async function http(url, o = {}) {
   } catch (e) { return { status: 0, error: String(e), text: '', headers: {}, url: String(url) }; }
 }
 
-const sandbox = { http, console, setTimeout, clearTimeout, JSON, Promise, RegExp, Math, Date, URL, encodeURIComponent, decodeURIComponent, btoa, atob };
+const sandbox = { http, console, setTimeout, clearTimeout, JSON, Promise, RegExp, Math, Date, encodeURIComponent, decodeURIComponent, btoa, atob };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(file, 'utf8') + '\n;this.getStreams = getStreams;', sandbox, { filename: file });
 const query = { tmdbId: +tmdbId, imdbId: imdbId || null, type, isTv: type === 'tv', title, originalTitle: title, year: year ? +year : null, season: season ? +season : null, episode: episode ? +episode : null };
