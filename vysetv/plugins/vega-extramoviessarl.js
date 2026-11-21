@@ -9,9 +9,6 @@
 var HOSTS = ['https://extramovies.sarl', 'https://extramovies.here'];
 var UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-function norm(s) {
-  return String(s || '').toLowerCase().replace(/&#8217;|&#039;|'/g, '').replace(/&amp;/g, '&').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
-}
 function origin(u) { return (/^https?:\/\/[^\/]+/.exec(u) || [''])[0]; }
 function strip(h) { return h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); }
 function qualityOf(s) {
@@ -64,18 +61,22 @@ async function unlock(view) {
 
 async function getStreams(query) {
   if (query.isTv || !query.title) return [];
-  var s = null;
-  for (var i = 0; i < HOSTS.length && !s; i++) {
-    var r = await http(HOSTS[i] + '/?s=' + encodeURIComponent(query.title), { headers: { 'User-Agent': UA }, timeout: 15000 });
-    if (r.status === 200 && r.text) s = r;
+  // each search string in turn (the first is as fast as before); later ones only when nothing matched
+  var posts = [], qs = searchQueries(query);
+  for (var j = 0; j < qs.length && !posts.length; j++) {
+    var s = null;
+    for (var i = 0; i < HOSTS.length && !s; i++) {
+      var r = await http(HOSTS[i] + '/?s=' + encodeURIComponent(qs[j]), { headers: { 'User-Agent': UA }, timeout: 15000 });
+      if (r.status === 200 && r.text) s = r;
+    }
+    if (!s) continue;
+    var cands = [];
+    s.text.replace(/<a[^>]*href="(https?:[^"]+)"[^>]*>\s*<div[^>]*poster-card[\s\S]*?poster-title[^>]*>([^<]*)/g, function (m, href, t) {
+      if (!/series|season|\bS\d\d/i.test(t)) cands.push({ href: href, title: t.replace(/&#8217;|&#039;/g, "'").replace(/&amp;/g, '&').replace(/&#\d+;/g, ' ') });
+    });
+    posts = rankMatches(cands, query, function (c) { return c.title; }).map(function (c) { return c.href; })
+      .filter(function (h, n, a) { return a.indexOf(h) === n; });
   }
-  if (!s) return [];
-  var want = norm(query.title), year = String(query.year || '');
-  var posts = [];
-  s.text.replace(/<a[^>]*href="(https?:[^"]+)"[^>]*>\s*<div[^>]*poster-card[\s\S]*?poster-title[^>]*>([^<]*)/g, function (m, href, t) {
-    var p = /^(.*?)\s*\(((?:19|20)\d\d)\)/.exec(t.replace(/&#\d+;/g, ' '));
-    if (p && norm(p[1]) === want && (!year || p[2] === year) && !/series|season|\bS\d\d/i.test(t)) posts.push(href);
-  });
   var out = [];
   for (var k = 0; k < posts.length && !out.length; k++) {
     var d = await http(posts[k], { headers: { 'User-Agent': UA }, timeout: 15000 });

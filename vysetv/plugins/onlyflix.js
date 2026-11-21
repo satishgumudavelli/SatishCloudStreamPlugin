@@ -9,28 +9,25 @@ const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 
 const slugify = (s) => String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/['’.]/g, '')
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-const norm = (s) => slugify(String(s || '').replace(/&#8217;|&#039;|&amp;/g, (m) => (m === '&amp;' ? '&' : '')));
 const get = (url, headers) => http(url, { headers: Object.assign({ 'User-Agent': UA }, headers || {}), timeout: 12000 });
 const attr = (html, name) => (new RegExp(name + '="([^"]*)"').exec(html) || [])[1] || '';
 
 // Open the title page by guessing its slug (WordPress redirects /movies/slug/ to the real url),
 // then confirm title (+ year) on the page. onlyflix has no working search endpoint.
 async function findPage(base, q) {
-  const names = [q.title, q.originalTitle].filter(Boolean);
-  const kinds = q.isTv ? ['series'] : ['movies'];
+  const names = titleList(q).slice(0, 4);
+  const kind = q.isTv ? 'series' : 'movies';
   for (const name of names) {
     const slugs = [slugify(name)];
     if (q.year) slugs.push(slugify(name) + '-' + q.year);
     for (const slug of slugs) {
-      for (const kind of kinds) {
-        const r = await get(base + '/' + kind + '/' + slug + '/');
-        if (r.status !== 200) continue;
-        const title = (/<h1 class="mb-4">([^<]*)/.exec(r.text) || [])[1];
-        const yr = (/Release Year<\/span>\s*<span[^>]*>(?:<a[^>]*>)?\s*(\d{4})/.exec(r.text) || [])[1];
-        if (!title || norm(title.trim()) !== norm(name)) continue;
-        if (q.year && yr && Math.abs(+yr - +q.year) > 1) continue;
-        return r;
-      }
+      const r = await get(base + '/' + kind + '/' + slug + '/');
+      if (r.status !== 200) continue;
+      const title = (/<h1 class="mb-4">([^<]*)/.exec(r.text) || [])[1];
+      const yr = (/Release Year<\/span>\s*<span[^>]*>(?:<a[^>]*>)?\s*(\d{4})/.exec(r.text) || [])[1];
+      if (!title || !titleScore(title.replace(/&#8217;|&#039;/g, "'").replace(/&amp;/g, '&').trim(), q)) continue;
+      if (!q.isTv && q.year && yr && Math.abs(+yr - +q.year) > 1) continue;
+      return r;
     }
   }
   return null;

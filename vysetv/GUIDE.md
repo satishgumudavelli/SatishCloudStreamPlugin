@@ -15,6 +15,8 @@ Define a global function `getStreams(query)`. It may be `async`.
   tmdbId: 872585, imdbId: 'tt15398776',   // imdbId can be null
   type: 'movie' | 'tv', isTv: false,
   title: 'Oppenheimer', originalTitle: 'Oppenheimer', year: 2023,
+  titles: ['Oppenheimer', …aliases],      // every name TMDB knows it by (title, original, alternative titles)
+  isAnime: false,
   season: null, episode: null             // numbers for 'tv'
 }
 
@@ -37,11 +39,13 @@ What the script can use:
 | `http(url, {method, headers, body, timeout})` | `Promise<{status, url, headers, text}>`. **Never throws**: on a network error `status` is `0` and `error` has the reason. Response `headers` are lower-case. `body` may be a string or an object (sent as JSON). Redirects are followed (at most 5). `timeout` in ms, capped at 20000. Default `User-Agent` is a desktop Chrome. |
 | `JSON`, `RegExp`, `Promise`, `Math`, `Date`, `setTimeout` | the language |
 | `btoa`, `atob` | base64 |
+| `parseHtml(html)` and `unescapeHtml(s)` | an HTML tree you can `select('css')` (see *HTML helper*) |
+| the **title helpers** (section 4) | `searchQueries`, `searchBest`, `bestMatch`, `rankMatches`, `parseTitle`, `titleScore`, `imdbMatches`, `normTitle` |
 | `console.log` | prints to the app's log |
 
-What it can **not** use: a DOM (`document`, `DOMParser`), `fetch`, `XMLHttpRequest`, `require`/`import`,
+What it can **not** use: a browser DOM (`document`, `DOMParser`; use `parseHtml`, see *HTML helper* below), `fetch`, `XMLHttpRequest`, `require`/`import`,
 Node APIs, `crypto`/`SubtleCrypto`, WebAssembly, cookies between calls (send them yourself in `headers`).
-Parse HTML with regular expressions and JSON with `JSON.parse`.
+Read HTML with `parseHtml` (a small BeautifulSoup/Jsoup stand-in, below) or regular expressions, and JSON with `JSON.parse`.
 If the site needs AES / SHA / HMAC, write it in plain JS inside the file (see *Crypto* below).
 
 ## 2. Limits you must design for
@@ -87,12 +91,74 @@ Consequences:
 2. **Reproduce it with `http()`**, one call per step, in a scratch script. Print `status` and the
    first 300 characters of `text` for each step: most bugs are a 403/404 or an HTML page where you
    expected JSON.
-3. **Match titles carefully** when you must search: lower-case, strip punctuation, compare the
-   title *and* the year (`query.year`, ±1). For `tv`, find the show first, then the season/episode.
+3. **Match titles with the helpers** (see *Title helpers* below): don't write your own matching. Search the
+   site with each string from `searchQueries(query)` until a listing matches; the matcher compares names
+   ignoring case and punctuation, checks a film's year, and for a show prefers the right season.
 4. **Resolve the player** to a direct URL. Hosts you can't resolve (a browser-only challenge, a
    captcha, WebAssembly, a DRM stream) are **skipped honestly** — never invent a link.
 5. **Return `[]`** when the title isn't there. Never throw for "not found".
 6. **Test it** with the harness (next section), on a movie *and* an episode.
+
+### HTML helper (BeautifulSoup / Jsoup in JavaScript)
+
+There is no browser DOM, so `parseHtml` gives you a small tree with CSS selectors. Most CloudStream
+providers read pages with Jsoup `select(...)`; the same selectors work here.
+
+```js
+var doc = parseHtml((await http(url)).text);       // parse once, select many times
+doc.select('div.card a[href^=http]').forEach(function (a) {
+  console.log(a.text(), a.attr('href'));
+});
+var title = doc.selectFirst('h1.entry-title');     // null when missing
+var og = doc.selectFirst('meta[property=og:image]');
+var script = doc.selectFirst('script').data();     // a <script>'s source (text() gives '')
+```
+
+| | |
+|---|---|
+| `doc.select(css)` / `doc.selectFirst(css)` | array of matches in page order / the first or `null`. Also on any node (searches inside it). |
+| `node.attr(name)`, `node.hasAttr(name)` | attribute value (`''` when missing, entities decoded) |
+| `node.text()` | the text inside, tags and scripts left out, entities decoded, whitespace collapsed |
+| `node.data()`, `node.html()`, `node.outerHtml()` | raw text inside (script source) / inner markup / the element's markup |
+| `node.tag`, `node.parent`, `node.children`, `node.next()`, `node.prev()` | navigation (elements only) |
+| `unescapeHtml(s)` | `Tom &amp; Jerry` → `Tom & Jerry` |
+
+Selectors: `tag`, `*`, `.class`, `#id`, `[attr]`, `[attr=v]`, `[attr^=v]`, `[attr$=v]`, `[attr*=v]`, `[attr~=v]`,
+compound (`a.btn[href]`), descendant (`a b`), child (`a > b`), `a + b`, `a ~ b`, lists (`a, b`), `:contains(text)`
+(case-insensitive, like Jsoup), `:first-child`, `:last-child`, `:nth-child(n|odd|even)`, `:not(compound)`.
+
+It was checked against BeautifulSoup (`soup.select`) on real pages: the same elements, in the same order.
+It reads untidy real-world HTML (unclosed `<li>`/`<p>`/`<td>`, unquoted attributes, `>` inside attribute
+values, comments, scripts). Speed in the app: a 60–90 KB page parses in about 50–80 ms (a TV is several
+times slower), a 1.5 MB page in about 1.5 s: **parse once** and keep the tree.
+
+### Title helpers
+
+Every plugin can call these (the app loads them before your script; the test harness loads the same
+file, `tools/helpers.js`). They exist so that all plugins match titles the same, well-tested way.
+
+| Function | What it does |
+|---|---|
+| `searchQueries(query)` | Strings to type into the site's search, best first: the title, the same without punctuation (`Dune: Part Two` → `dune part two`, many search boxes choke on colons), the original title and aliases; for a show past season 1 also `Title Season 2` and `Title S2`. |
+| `searchBest(query, search, get)` | Tries each of those strings with `search(text)` (return an **array** of listings, `[]` for none) until one has a match; returns the best listing or `null`. |
+| `bestMatch(items, query, get)` / `rankMatches(items, query, get)` | The best matching listing / all matches, best first. A film's year must be within 1 of the listing's year when both are known; a show is never rejected for its year; the right season ranks higher; an alias only counts when the listing's year fits (TMDB lists odd aliases). |
+| `parseTitle(raw)` | `{title, year, season}` read out of a listing like `Oppenheimer (2023) BluRay 1080p` or `Breaking Bad Season 2 Complete`. |
+| `titleScore(candidate, query)` | 0–100: 100 same name, 60 the listing continues the name, 40 the site dropped a subtitle. |
+| `imdbMatches(pageText, query)` | `true` the page names this film's IMDb id (a sure match), `false` it names other ids but not this one (a different film: skip), `null` no id on the page. |
+
+`get(item)` tells the helpers where a listing's title is: return the text, or `{title, year, season}`.
+
+```js
+var hit = await searchBest(q, async function (text) {
+  var r = await http(BASE + '/search?q=' + encodeURIComponent(text));
+  return parseListings(r.text);               // [{ name: 'Dune Part Two (2024) 1080p', url: '…' }, …]
+}, function (l) { return l.name; });
+if (!hit) return [];
+var page = await http(hit.url);
+if (imdbMatches(page.text, q) === false) return [];   // the site's page is another film
+```
+
+Plugins that use the helpers need a VyseTV build that has them (the same repository version).
 
 ### Skeleton
 

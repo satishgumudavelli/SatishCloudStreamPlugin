@@ -4,7 +4,6 @@ const DOMAINS = ['https://uhdmovies.ceo', 'https://uhdmovies.beauty']; // root r
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const get = async (url, headers, timeout) => { const o = { headers: Object.assign({ 'User-Agent': UA }, headers || {}), timeout: timeout || 15000 }; const r = await http(url, o); return r.status === 0 || r.status >= 500 ? await http(url, o) : r; }; // one retry: these hosts drop connections
 const post = (url, headers, body) => http(url, { method: 'POST', headers: Object.assign({ 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' }, headers || {}), body, timeout: 15000 });
-const slug = (s) => String(s || '').toLowerCase().replace(/&amp;|&/g, ' and ').replace(/&#?\w+;/g, '').replace(/['\u2019.]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const strip = (s) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&#8211;|&#8212;/g, '-').replace(/&#?\w+;/g, ' ').replace(/\s+/g, ' ').trim();
 const attrOf = (tag, n) => (new RegExp('\\b' + n + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\'|([^\\s>]+))', 'i').exec(tag) || []).slice(1).find((x) => x != null) || '';
 const unesc = (s) => String(s || '').replace(/&amp;/g, '&');
@@ -157,16 +156,14 @@ async function liveBase() {
 const seasonRange = (t) => { const m = /season[s]?\s*\{?\s*0*(\d+)(?:\s*[-&to]+\s*0*(\d+))?/i.exec(t); return m ? [+m[1], +(m[2] || m[1])] : null; };
 
 async function findPost(base, q) {
-  const want = slug(q.title);
-  const r = await get(base + '/search/' + encodeURIComponent(q.title).replace(/%20/g, '+') + '/');
-  const re = /class="entry-image"[\s\S]{0,200}?<a href="([^"]+)" title="([^"]*)"/gi; let m; const seen = {};
-  while ((m = re.exec(r.text))) {
-    if (seen[m[1]]) continue; seen[m[1]] = 1;
-    const title = strip(m[2]).replace(/^Download\s+/i, '');
-    const hs = slug(title.split(/[\(\[{]/)[0]).replace(/ \d+$/, '');
-    if (hs !== want) continue;
-    if (q.isTv) { const rg = seasonRange(title); if (rg && q.season >= rg[0] && q.season <= rg[1]) return { href: m[1], title }; }
-    else { const yr = (/\((\d{4})\)/.exec(title) || [])[1]; if (!yr || !q.year || Math.abs(+yr - +q.year) <= 1) return { href: m[1], title }; }
+  const seen = {};
+  for (const s of searchQueries(q)) {
+    const r = await get(base + '/search/' + encodeURIComponent(s).replace(/%20/g, '+') + '/');
+    const items = [], re = /class="entry-image"[\s\S]{0,200}?<a href="([^"]+)" title="([^"]*)"/gi; let m;
+    while ((m = re.exec(r.text))) { if (seen[m[1]]) continue; seen[m[1]] = 1; items.push({ href: m[1], title: strip(m[2]).replace(/^Download\s+/i, '') }); }
+    let c = rankMatches(items, q, (i) => { const p = parseTitle(i.title); return { title: p.title, year: p.year }; });
+    if (q.isTv) c = c.filter((i) => { const rg = seasonRange(i.title); return rg && q.season >= rg[0] && q.season <= rg[1]; });
+    if (c[0]) return c[0];
   }
   return null;
 }

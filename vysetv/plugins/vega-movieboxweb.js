@@ -6,8 +6,7 @@ const DOMAINS = ['https://officialmoviebox.com']; // ponytail: add rotated domai
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 const HDR = { 'User-Agent': UA, Accept: 'application/json', Cookie: 'token=', 'x-client-info': '{"timezone":"Asia/Colombo"}', 'x-source': '' };
 
-const norm = (s) => String(s || '').toLowerCase().replace(/\s*\[.*?\]\s*$/, '').replace(/\s*\[.*?\]\s*/g, ' ').replace(/\s+s\d+$/, '').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'")
-  .replace(/[^a-z0-9]+/g, '');
+const unent = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'");
 const get = (url, headers) => http(url, { headers: Object.assign({}, HDR, headers || {}), timeout: 12000 });
 
 // Nuxt 3 devalue payload: flat array, numbers are indices into it.
@@ -41,7 +40,7 @@ async function search(base, title) {
   const r = await get(base + '/newWeb/searchResult?keyword=' + encodeURIComponent(title));
   const out = [], re = /<a href="\/moviesDetail\/([^"]+)"[^>]*class="[^"]*card[^"]*"[\s\S]*?<h2[^>]*?(?:title="([^"]*)")?[^>]*>([^<]*)<\/h2>/g;
   let m;
-  while ((m = re.exec(r.text))) out.push({ path: m[1], title: m[2] || m[3] });
+  while ((m = re.exec(r.text))) out.push({ path: m[1], title: unent(m[2] || m[3]).replace(/\s*\[.*?\]\s*/g, ' ').trim() });
   return out;
 }
 
@@ -49,11 +48,12 @@ async function getStreams(query) {
   const names = [query.title, query.originalTitle].filter(Boolean);
   for (const base of DOMAINS) {
     let det = null;
-    for (const name of names) {
-      let cards = (await search(base, name)).filter((c) => norm(c.title) === norm(name));
-      // series come as one card per season ("Breaking Bad S2"): try the requested season first
-      if (query.isTv) { const w = ' s' + (query.season || 1); cards.sort((a, b) => (new RegExp(w + '$', 'i').test(b.title) ? 1 : 0) - (new RegExp(w + '$', 'i').test(a.title) ? 1 : 0)); }
+    const tried = {};
+    for (const text of searchQueries(query)) {
+      // series come as one card per season ("Breaking Bad S2"): rankMatches puts the requested season first
+      const cards = rankMatches(await search(base, text), query, (c) => c.title).filter((c) => !tried[c.path]);
       for (const c of cards.slice(0, 4)) {
+        tried[c.path] = 1;
         const d = await detail(base, c.path);
         if (!d) continue;
         const s = d.subject, isSeries = +s.subjectType === 2;

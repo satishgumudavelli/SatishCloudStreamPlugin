@@ -7,16 +7,6 @@
 
 var HOSTS = ['https://filmyfly.gift', 'https://filmyfly.farm', 'https://filmyfly.ong', 'https://filmyfly.net'];
 
-function norm(s) {
-  return String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
-// "The Matrix (1999) (Hindi + English)..." -> {name:'the matrix', year:'1999'}
-function parseTitle(t) {
-  var m = /^(.*?)[\s(\[{]+((?:19|20)\d\d)\b/.exec(t);
-  return m ? { name: norm(m[1]), year: m[2] } : { name: norm(t), year: '' };
-}
-
 function qualityOf(s) {
   var m = /(\d{3,4})p/i.exec(s || '');
   return m ? m[1] + 'p' : (/4k|uhd/i.test(s || '') ? '2160p' : '');
@@ -36,14 +26,10 @@ async function page(path) {
 
 async function getStreams(query) {
   if (query.isTv || !query.title) return [];
-  var s = await http('https://webfind.filmyflydla.space/search?q=' + encodeURIComponent(query.title) + '&page=1&per_page=40', { timeout: 15000 });
-  var results;
-  try { results = JSON.parse(s.text).results || []; } catch (e) { return []; }
-  var want = norm(query.title), year = String(query.year || '');
-  var hit = results.filter(function (r) {
-    var p = parseTitle(r.title);
-    return p.name === want && (!year || !p.year || p.year === year);
-  })[0];
+  var hit = await searchBest(query, async function (text) {
+    var s = await http('https://webfind.filmyflydla.space/search?q=' + encodeURIComponent(text) + '&page=1&per_page=40', { timeout: 15000 });
+    try { return JSON.parse(s.text).results || []; } catch (e) { return []; }
+  }, function (r) { return r.title; });
   if (!hit) return [];
 
   var d = await page('/movie/' + hit.filmyfly + '/x.html');

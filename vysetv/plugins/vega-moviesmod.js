@@ -5,7 +5,6 @@ const DOMAINS = ['https://moviesmod.fi', 'https://moviesmod.tw']; // root redire
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const get = async (url, headers, timeout) => { const o = { headers: Object.assign({ 'User-Agent': UA }, headers || {}), timeout: timeout || 15000 }; const r = await http(url, o); return r.status === 0 || r.status >= 500 ? await http(url, o) : r; }; // one retry: these hosts drop connections
 const post = (url, headers, body) => http(url, { method: 'POST', headers: Object.assign({ 'User-Agent': UA, 'Content-Type': 'application/x-www-form-urlencoded' }, headers || {}), body, timeout: 15000 });
-const slug = (s) => String(s || '').toLowerCase().replace(/&amp;|&/g, ' and ').replace(/&#?\w+;/g, '').replace(/['\u2019.]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const strip = (s) => String(s || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&#8211;|&#8212;/g, '-').replace(/&#?\w+;/g, ' ').replace(/\s+/g, ' ').trim();
 const attrOf = (tag, n) => (new RegExp('\\b' + n + '\\s*=\\s*(?:"([^"]*)"|\'([^\']*)\'|([^\\s>]+))', 'i').exec(tag) || []).slice(1).find((x) => x != null) || '';
 const unesc = (s) => String(s || '').replace(/&amp;/g, '&');
@@ -158,16 +157,19 @@ async function liveBase() {
 const seasonRange = (t) => { const m = /season[s]?\s*\{?\s*0*(\d+)(?:\s*[-&to]+\s*0*(\d+))?/i.exec(t) || /\bS0*(\d{1,2})\b/.exec(t); return m ? [+m[1], +(m[2] || m[1])] : null; };
 
 async function findPost(base, q) {
-  const want = slug(q.title);
-  const r = await get(base + '/search/' + encodeURIComponent(q.title).replace(/%20/g, '+') + '/');
-  const re = /<h2 class="title[^>]*>\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi; let m;
-  while ((m = re.exec(r.text))) {
-    const title = strip(m[2]).replace(/^Download\s+/i, '');
-    const hs = slug(title.split(/[\(\[{]/)[0]).replace(/ \d+$/, '');
-    if (hs !== want) continue;
-    const yr = (/\((\d{4})\)/.exec(title) || [])[1];
-    if (q.isTv) { const rg = seasonRange(title); if (rg && q.season >= rg[0] && q.season <= rg[1]) return { href: m[1], single: rg[0] === rg[1] }; }
-    else if (!yr || !q.year || Math.abs(+yr - +q.year) <= 1) return { href: m[1] };
+  const seen = {};
+  for (const s of searchQueries(q)) {
+    const r = await get(base + '/search/' + encodeURIComponent(s).replace(/%20/g, '+') + '/');
+    const items = [], re = /<h2 class="title[^>]*>\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi; let m;
+    while ((m = re.exec(r.text))) items.push({ href: m[1], title: strip(m[2]).replace(/^Download\s+/i, '') });
+    let c = rankMatches(items, q, (i) => { const p = parseTitle(i.title); return { title: p.title, year: p.year }; });
+    if (q.isTv) c = c.filter((i) => { const rg = seasonRange(i.title); i.single = rg && rg[0] === rg[1]; return rg && q.season >= rg[0] && q.season <= rg[1]; });
+    for (const it of c.slice(0, 3)) {
+      if (seen[it.href]) continue; seen[it.href] = 1;
+      const page = await get(it.href); if (page.status !== 200) continue;
+      if (imdbMatches(page.text, q) === false) continue; // the page names another film's IMDb id
+      return { href: it.href, single: it.single, page };
+    }
   }
   return null;
 }
@@ -186,7 +188,7 @@ function blocks(html) {
 async function getStreams(q) {
   const base = await liveBase(); if (!base) return [];
   const post = await findPost(base, q); if (!post) return [];
-  const page = await get(post.href); if (page.status !== 200) return [];
+  const page = post.page;
   let bl = blocks(page.text);
   if (q.isTv) { const f = bl.filter((b) => new RegExp('Season\\s*0*' + q.season + '\\b', 'i').test(b.heading)); bl = f.length || !post.single ? f : bl; }
   else bl = bl.filter((b) => !/zip|pack/i.test(b.heading));

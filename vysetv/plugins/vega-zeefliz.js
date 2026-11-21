@@ -122,15 +122,6 @@ function blocks(html) {
   }
   return out;
 }
-function titleOk(t, q) {
-  var n = norm(t), w = norm(q.title);
-  if (n.indexOf(w) !== 0) return false;
-  var rest = n.slice(w.length);
-  if (q.isTv) return /season|s \d|s\d/.test(rest) || /web series/.test(rest);
-  var y = /\b(19|20)\d{2}\b/.exec(rest);
-  return !/season/.test(rest) && (!q.year || (y && Math.abs(+y[0] - q.year) <= 1));
-}
-
 async function resolveNex(url, label, out) {
   var page = await getText(url);
   var m, re = /href="(https?:[^"]+)"/g, seen = {}, jobs = [];
@@ -153,18 +144,23 @@ async function zeedl(link, label, out) {
 }
 
 async function getStreams(q) {
-  var res = await firstOk(HOSTS, '/?s=' + encodeURIComponent(q.title), null, function (t) { return /entry-title/.test(t); });
-  if (!res) return [];
-  var posts = parseSearch(res.text).filter(function (p) { return titleOk(p.title, q); }).slice(0, 4);
-  var picks = [];
-  for (var i = 0; i < posts.length && !picks.length; i++) {
-    var html = await getText(posts[i].href);
-    var bl = blocks(html);
-    if (q.isTv) {
-      var sre = new RegExp('(?:season\\s*0?' + (q.season || 1) + '|\\bS0?' + (q.season || 1) + ')\\b(?!\\s*[-–]\\s*\\d)', 'i');
-      bl = bl.filter(function (b) { return sre.test(b.heading) && /single episode/i.test(b.heading); });
+  // each search string in turn (the first is as fast as before); later ones only when nothing matched
+  var picks = [], qs = searchQueries(q);
+  for (var k = 0; k < qs.length && !picks.length; k++) {
+    var res = await firstOk(HOSTS, '/?s=' + encodeURIComponent(qs[k]), null, function (t) { return /entry-title/.test(t); });
+    if (!res) continue;
+    var found = parseSearch(res.text).filter(function (p) { return q.isTv || !/season/i.test(p.title); });
+    var posts = rankMatches(found, q, function (p) { return p.title.replace(/^\[18\+\]\s*/, ''); }).slice(0, 4);
+    for (var i = 0; i < posts.length && !picks.length; i++) {
+      var html = await getText(posts[i].href);
+      if (imdbMatches(html, q) === false) continue;
+      var bl = blocks(html);
+      if (q.isTv) {
+        var sre = new RegExp('(?:season\\s*0?' + (q.season || 1) + '|\\bS0?' + (q.season || 1) + ')\\b(?!\\s*[-–]\\s*\\d)', 'i');
+        bl = bl.filter(function (b) { return sre.test(b.heading) && /single episode/i.test(b.heading); });
+      }
+      bl.forEach(function (b) { picks.push(b); });
     }
-    bl.forEach(function (b) { if (!/18\+/.test(b.heading) || true) picks.push(b); });
   }
   // mid qualities first (720p/1080p), small first
   picks.sort(function (a, b) {

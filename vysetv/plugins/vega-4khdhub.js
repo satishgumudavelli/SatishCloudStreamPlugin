@@ -108,17 +108,16 @@ var HOSTS = ['https://4khdhub.one'];
 var MAX = 6; // resolved files per request (script time limit is 20 s)
 
 async function pickPage(q) {
-  var res = await firstOk(HOSTS, '/?s=' + encodeURIComponent(q.title), null, function (t) { return /movie-card/.test(t); });
-  if (!res) return null;
-  var cards = [], re = /<a href="([^"]+)" class="movie-card"[\s\S]*?<h3 class="movie-card-title">([^<]*)<\/h3>\s*<p class="movie-card-meta">([^<]*)/g, m;
-  while ((m = re.exec(res.text))) cards.push({ href: m[1], title: unent(m[2]), meta: m[3], series: /-series-\d+/.test(m[1]) });
-  var want = norm(q.title);
-  var c = cards.filter(function (x) {
-    if (norm(x.title) !== want || x.series !== !!q.isTv) return false;
-    var y = /\b(19|20)\d{2}\b/.exec(x.meta);
-    return q.isTv || !q.year || !y || Math.abs(+y[0] - q.year) <= 1;
-  })[0];
-  return c ? absUrl(res.base + '/', c.href) : null;
+  var base = HOSTS[0];
+  var c = await searchBest(q, async function (s) {
+    var res = await firstOk(HOSTS, '/?s=' + encodeURIComponent(s), null, function (t) { return /movie-card/.test(t); });
+    if (!res) return [];
+    base = res.base;
+    var cards = [], re = /<a href="([^"]+)" class="movie-card"[\s\S]*?<h3 class="movie-card-title">([^<]*)<\/h3>\s*<p class="movie-card-meta">([^<]*)/g, m;
+    while ((m = re.exec(res.text))) cards.push({ href: m[1], title: unent(m[2]), meta: m[3], series: /-series-\d+/.test(m[1]) });
+    return cards.filter(function (x) { return x.series === !!q.isTv; });
+  }, function (x) { return { title: x.title, year: (/\b(?:19|20)\d{2}\b/.exec(x.meta) || [])[0] }; });
+  return c ? absUrl(base + '/', c.href) : null;
 }
 
 function collectMovie(html) {

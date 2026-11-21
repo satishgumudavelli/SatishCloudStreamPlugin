@@ -17,7 +17,7 @@ goes in `vysetv/plugins/`. Do not touch other plugins and do not run git.
 
 Define a global `async function getStreams(query)`.
 
-`query` = `{ tmdbId, imdbId (may be null), type: 'movie'|'tv', isTv, title, originalTitle, year, season, episode }`
+`query` = `{ tmdbId, imdbId (may be null), type: 'movie'|'tv', isTv, title, originalTitle, titles (the title, original title and TMDB's aliases), isAnime, year, season, episode }`
 (season and episode are numbers for `tv`, otherwise null).
 
 Return an array (empty `[]` when the title is not on the site; never throw for "not found") of
@@ -33,10 +33,10 @@ Return an array (empty `[]` when the title is not on the site; never throw for "
 Globals available: `http(url, {method, headers, body, timeout})` →
 `Promise<{status, url, headers (lower-case), text}>` which **never throws** (network error →
 `status: 0`, `error`), plus `JSON`, `RegExp`, `Promise`, `Math`, `Date`, `setTimeout`,
-`encodeURIComponent`/`decodeURIComponent`, `btoa`/`atob`, `console.log`.
+`encodeURIComponent`/`decodeURIComponent`, `btoa`/`atob`, `console.log`, and the **title helpers** from `vysetv/tools/helpers.js` (read that file first): `searchQueries`, `searchBest`, `bestMatch`, `rankMatches`, `parseTitle`, `titleScore`, `imdbMatches`.
 
-**NOT available:** DOM or `DOMParser`, `fetch`, `XMLHttpRequest`, `require`/`import`, Node APIs,
-`URL`/`URLSearchParams`, `TextEncoder`, `Buffer`, `crypto`, WebAssembly. Parse HTML with regexes. If the
+**NOT available:** a browser DOM or `DOMParser` (use `parseHtml(html).select('css')` from `vysetv/tools/helpers.js`: a Jsoup/BeautifulSoup-style tree with `select`, `selectFirst`, `attr`, `text`, `data`), `fetch`, `XMLHttpRequest`, `require`/`import`, Node APIs,
+`URL`/`URLSearchParams`, `TextEncoder`, `Buffer`, `crypto`, WebAssembly. Parse HTML with `parseHtml` (or a regex for one small thing). If the
 site needs AES/SHA/HMAC, implement it in plain JS inside the file.
 
 Rules:
@@ -50,8 +50,7 @@ Rules:
 4. Put the most reliable and best links **first**: only the first ~3 links of a source are tried in auto-play.
 5. Drop expired signed URLs. Never hard-code tokens or secrets. Don't invent links: a host you can't
    resolve is skipped.
-6. If the site has no TMDB-id lookup, search by title: normalize (lower-case, no punctuation), compare
-   the year (±1), and for `tv` pick the show then the season/episode.
+6. If the site has no TMDB-id lookup, search by title **with the helpers, not your own matching**: `searchBest(query, search, get)` tries each string from `searchQueries(query)` until a listing matches (aliases, season variants, year check, right season are handled). When a page shows an IMDb link, also check `imdbMatches(pageText, query)` (`false` means a different film).
 7. Start the file with a comment: the site, and the chain you followed (search → page → player → API).
 
 ## How to work

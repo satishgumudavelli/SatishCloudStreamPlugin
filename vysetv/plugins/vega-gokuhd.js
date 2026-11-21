@@ -9,8 +9,6 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const get = (url) => http(url, { headers: { 'User-Agent': UA, Referer: BASE + '/' }, timeout: 12000 });
 
 const ent = (s) => String(s).replace(/&#8211;|&#8212;/g, '-').replace(/&#8217;|&#039;|&#8216;/g, "'").replace(/&#038;|&amp;/g, '&').replace(/&#\d+;/g, '');
-const norm = (s) => ent(s).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
-const clean = (raw) => ent(raw).replace(/\s*(\(|\[|\||WEB-DL|Blu-?Ray|Hindi Dubbed|Dual Audio).*$/i, '').trim();
 const strip = (h) => ent(h.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
 
 async function listPosts(kind) {
@@ -43,14 +41,9 @@ const qual = (h) => { const m = /(2160|1080|720|480)p?/i.exec(h) || /(4k)/i.exec
 
 async function getStreams(query) {
   const isTv = !!query.isTv, season = query.season || 1, episode = query.episode || 1;
-  const names = [query.title, query.originalTitle].filter(Boolean).map(norm);
-  const posts = (await listPosts(isTv ? 'series' : 'movies')).filter((p) => {
-    const c = clean(p.raw), cn = norm(c), head = norm(c.split(':')[0]);
-    if (!names.some((n) => n === cn || n === head)) return false;
-    if (isTv) return coversSeason(p.raw, season);
-    const y = (/\((\d{4})\)/.exec(p.raw) || [])[1];
-    return !(query.year && y && Math.abs(+y - +query.year) > 1);
-  });
+  // season ranges ("Season 1 - 18") are checked by coversSeason, so the season is left out of the title match
+  const posts = rankMatches(await listPosts(isTv ? 'series' : 'movies'), query, (p) => { const i = parseTitle(ent(p.raw)); return { title: i.title, year: isTv ? null : i.year }; })
+    .filter((p) => !isTv || coversSeason(p.raw, season));
   if (!posts.length) return [];
   const html = (await get(posts[0].url)).text;
   // quality heading (h4) -> its nexdrive buttons

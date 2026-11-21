@@ -5,10 +5,6 @@
 
 var HOSTS = ['https://ex5wfv.movielinkbd.li', 'https://wvaedp.movielinkbd.at'];
 
-function norm(s) {
-  return String(s || '').toLowerCase().replace(/&amp;/g, '&').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
 // The page's own decoder: base64, XOR with an LCG keystream seeded by data-ds, after data-dr warm-up rounds.
 function dec(b, s, r) {
   var x = parseInt(s, 16) >>> 0, i;
@@ -58,36 +54,30 @@ async function resolveFile(base, path, label, out) {
 
 async function getStreams(query) {
   if (!query.title) return [];
-  var s = await get('', '/search?q=' + encodeURIComponent(query.title));
-  if (!s) return [];
-  var base = origin(s.url);
-  var want = norm(query.title), year = String(query.year || ''), isTv = !!query.isTv;
-  var cards = s.text.split('<div class="movie-card').slice(1).map(function (c) {
-    var href = /href="(\/(?:movie|series)\/[^"]+)"/.exec(c), alt = /alt="([^"]*)"/.exec(c);
-    return href && alt ? { path: href[1], title: alt[1] } : null;
-  }).filter(Boolean);
-  // "The Matrix (1999) [ORG Hindi]" / "Breaking Bad (2008) S01 Completed" -> name before the year / season tag
-  function parse(t) {
-    var m = /^(.*?)\s*(?:[(\[]((?:19|20)\d\d)[)\]]|\bS\d{1,2}\b|-\s*S\d)/i.exec(t);
-    return { name: norm(m ? m[1] : t), year: m && m[2] || '', season: +((/\bS(\d{1,2})\b/i.exec(t) || [])[1] || 0) };
+  var isTv = !!query.isTv, base = '', hits = [], post = null;
+  // each search string in turn (the first is as fast as before); later ones only when nothing matched
+  var qs = searchQueries(query);
+  for (var k = 0; k < qs.length && !post; k++) {
+    var s = await get('', '/search?q=' + encodeURIComponent(qs[k]));
+    if (!s) continue;
+    base = origin(s.url);
+    var cards = s.text.split('<div class="movie-card').slice(1).map(function (c) {
+      var href = /href="(\/(?:movie|series)\/[^"]+)"/.exec(c), alt = /alt="([^"]*)"/.exec(c);
+      return href && alt ? { path: href[1], title: alt[1] } : null;
+    }).filter(function (c) { return c && (/\/series\//.test(c.path)) === isTv; });
+    hits = rankMatches(cards, query, function (c) { return c.title; });
+    // TV: the post for the season (S01-S03 packs are not matched)
+    post = isTv ? hits.filter(function (c) { return parseTitle(c.title).season === (query.season || 1); })[0] : hits[0];
   }
-  var hits = cards.filter(function (c) {
-    var p = parse(c.title);
-    if (p.name !== want || (/\/series\//.test(c.path)) !== isTv) return false;
-    return isTv || !year || !p.year || p.year === year;
-  });
+  if (!post) return [];
   var out = [];
   if (!isTv) {
-    if (!hits[0]) return [];
-    var d = await get(base, hits[0].path);
+    var d = await get(base, post.path);
     if (!d) return [];
     var bs = buttons(d.text);
     await Promise.all(bs.map(function (b) { return resolveFile(base, b.path, b.label, out); }));
     return out;
   }
-  // TV: pick the post for the season (S01-S03 packs are not matched), then the single-episode card.
-  var post = hits.filter(function (c) { return parse(c.title).season === (query.season || 1); })[0];
-  if (!post) return [];
   var dd = await get(base, post.path);
   if (!dd) return [];
   var cardsHtml = dd.text.split(/<div[^>]*class="[^"]*ep-card/).slice(1);

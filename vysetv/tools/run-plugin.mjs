@@ -33,8 +33,12 @@ async function http(url, o = {}) {
 
 const sandbox = { http, console, setTimeout, clearTimeout, JSON, Promise, RegExp, Math, Date, encodeURIComponent, decodeURIComponent, btoa, atob };
 vm.createContext(sandbox);
+// the same helper functions the app gives every plugin (assets/plugins/helpers.js in VyseTV)
+vm.runInContext(fs.readFileSync(new URL('./helpers.js', import.meta.url), 'utf8'), sandbox, { filename: 'helpers.js' });
 vm.runInContext(fs.readFileSync(file, 'utf8') + '\n;this.getStreams = getStreams;', sandbox, { filename: file });
-const query = { tmdbId: +tmdbId, imdbId: imdbId || null, type, isTv: type === 'tv', title, originalTitle: title, year: year ? +year : null, season: season ? +season : null, episode: episode ? +episode : null };
+// aliases: TITLES="Name one|Name two" (the app passes TMDB's alternative titles here)
+const titles = [...new Set([title, ...(process.env.TITLES || '').split('|').filter(Boolean)])];
+const query = { tmdbId: +tmdbId, imdbId: imdbId || null, type, isTv: type === 'tv', title, originalTitle: title, titles, isAnime: false, year: year ? +year : null, season: season ? +season : null, episode: episode ? +episode : null };
 const t0 = Date.now();
 const streams = await sandbox.getStreams(query);
 console.log(`${streams.length} stream(s) in ${((Date.now() - t0) / 1000).toFixed(1)}s`);

@@ -10,7 +10,6 @@ const HDR = { 'User-Agent': UA, Referer: SITE + '/', Origin: SITE, 'Content-Type
 const UID = 'a1b2c3d4-' + Math.floor(Math.random() * 1e8).toString(16) + '-4e5f-8a9b-0c1d2e3f4a5b';
 const END = '&device-density=2&userid=' + UID + '&platform=com.mxplay.desktop&content-languages=hi,en&kids-mode-enabled=false';
 
-const norm = (s) => String(s || '').toLowerCase().replace(/\s*\((hindi|tamil|telugu|english)[^)]*\)\s*$/, '').replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
 const fix = (u) => (/^http/.test(u) ? u : CDN + u);
 const val = (u) => (u && u !== 'null' ? u : null);
 
@@ -23,13 +22,12 @@ function hls(it) {
 const getJ = async (url, o) => { const r = await http(url, Object.assign({ headers: HDR, timeout: 12000 }, o || {})); try { return JSON.parse(r.text); } catch (e) { return {}; } };
 
 async function getStreams(query) {
-  const names = [query.title, query.originalTitle].filter(Boolean);
   const want = query.isTv ? 'tvshow' : 'movie';
-  for (const name of names) {
-    const j = await getJ(API + '/search/resultv2?query=' + encodeURIComponent(name) + END, { method: 'POST', body: '{}' });
-    const items = [].concat.apply([], (j.sections || []).map((s) => s.items || []));
-    const it = items.find((i) => i.type === want && norm(i.title) === norm(name) &&
-      (!query.year || !i.releaseDate || Math.abs(parseInt(String(i.releaseDate).slice(0, 4), 10) - +query.year) <= 1));
+  for (const text of searchQueries(query)) {
+    const j = await getJ(API + '/search/resultv2?query=' + encodeURIComponent(text) + END, { method: 'POST', body: '{}' });
+    const items = [].concat.apply([], (j.sections || []).map((s) => s.items || [])).filter((i) => i.type === want);
+    const it = bestMatch(items, query, (i) => ({ title: String(i.title || '').replace(/\s*\((hindi|tamil|telugu|english)[^)]*\)\s*$/i, ''),
+      year: parseInt(String(i.releaseDate || '').slice(0, 4), 10) || null }));
     if (!it) continue;
     const mk = (u) => [{ url: u, type: 'hls', quality: 'auto', server: 'MX Player', label: 'MX Player', headers: { Referer: SITE + '/', 'User-Agent': UA } }];
     if (!query.isTv) { const u = hls(it); return u ? mk(u) : []; }
