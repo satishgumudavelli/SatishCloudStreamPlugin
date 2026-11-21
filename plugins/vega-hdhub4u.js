@@ -106,7 +106,7 @@ async function hubcloud(url, label, out, tag) {
 // The site's domain changes all the time. The landing page https://hdhub4u.fr/ looks the current one up with a few
 // endpoints (see discoverDomain): the plugin does the same first, then uses domains.json (name "hdhub"), then its own list.
 //
-// NOT TESTED against the live site: hdhub4u's domains reset the connection from the author's network. The search
+// Checked live (once the connection got through): the page was read and the chain gave streams. The connection to the site is flaky (random resets), so the page fetch is retried. The search
 // step was checked live, and HubCloud / greenmotors are the same code as vega-4khdhub.js; the page reading follows the
 // Kotlin provider's selectors ("captured live 2026-11-13") and is only tested against a made-up page (tools/hdhub.test.mjs).
 var HOSTS = ['https://new15.hdhub4u.cl'];
@@ -170,14 +170,20 @@ async function pickPost(q) {
   return searchBest(q, async function (text) { return (await searchIndex(text)).filter(fits); }, function (p) { return parseTitle(p.title); });
 }
 
-// the post page: the index keeps old domains in its links, so the path is tried on every current domain
+// the post page: the index keeps old domains in its links, so the path is tried on every current domain.
+// The connection to the site is flaky (about half of the handshakes are reset, measured with tools/diagnose-host.mjs):
+// a connection that fails is tried again a few times; an answer of any kind is not.
 async function fetchPost(link) {
-  var path = link.replace(/^https?:\/\/[^\/]+/, ''), tries = HOSTS.map(function (h) { return h + path; });
-  tries.push(link);
+  var path = link.replace(/^https?:\/\/[^\/]+/, ''), tries = HOSTS.map(function (h) { return { url: h + path, again: 6 }; });
+  tries.push({ url: link, again: 1 }); // the index's own link (usually a dead domain): once
+  var t0 = Date.now();
   for (var i = 0; i < tries.length; i++) {
-    var r = await http(tries[i], { headers: HDH, timeout: 12000 });
-    console.log('[hdhub] page ' + tries[i] + ' -> ' + r.status + (r.error ? ' ' + String(r.error).slice(0, 80) : '') + ' len=' + (r.text || '').length + (/just a moment/i.test(r.text || '') ? ' (Cloudflare challenge)' : ''));
-    if (r.status === 200 && r.text.length > 2000) return { url: tries[i], text: r.text };
+    for (var n = 0; n < tries[i].again && (n === 0 || Date.now() - t0 < 7000); n++) { // (a few tries within ~7 s: the script has 20 s, and the site answers badly to a flood)
+      var r = await http(tries[i].url, { headers: HDH, timeout: 12000 });
+      console.log('[hdhub] page ' + tries[i].url + ' try ' + (n + 1) + ' -> ' + r.status + (r.error ? ' ' + String(r.error).slice(0, 80) : '') + ' len=' + (r.text || '').length + (/just a moment/i.test(r.text || '') ? ' (Cloudflare challenge)' : ''));
+      if (r.status === 200 && r.text.length > 2000) return { url: tries[i].url, text: r.text };
+      if (r.status !== 0) break; // the site answered (an error page, a challenge): asking again will not change it
+    }
   }
   return null;
 }
