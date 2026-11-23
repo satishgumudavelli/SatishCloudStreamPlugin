@@ -5,6 +5,7 @@
     "version": "1.0",
     "icon": "https://vidbox.wtf/logo.png",
     "type": "global",
-    "disabled": false
+    "disabled": false,
+    "hasSettings": true
   }
 ]
