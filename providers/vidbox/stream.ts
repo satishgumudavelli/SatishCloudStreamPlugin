@@ -405,7 +405,10 @@ const nxsha: Server = async (j) => {
   const base: Record<string, unknown> = { tmdbId: String(j.id), imdb_id: "", type: isTv(j) ? "tv" : "movie" };
   if (isTv(j)) Object.assign(base, { season: j.season, episode: j.episode });
   const hdr = { Referer: `${NXSHA}/` };
-  const ask = async (path: string, extra: Record<string, unknown>): Promise<any> => {
+  const ask = (path: string, extra: Record<string, unknown>): Promise<any> =>
+    // a slow server must not hold up the others (the player waits for all of them)
+    Promise.race([asked(path, extra), new Promise<any>((_, no) => setTimeout(() => no(new Error("timed out")), 6000))]);
+  const asked = async (path: string, extra: Record<string, unknown>): Promise<any> => {
     const salt = Uint8Array.from({ length: 8 }, () => Math.floor(Math.random() * 256));
     const body = { ...base, ...extra, _req_ts: Date.now(), _req_salt: Math.random().toString(36).slice(2, 12) };
     const r = await json(j, `${NXSHA}/api/${path}?q=${encodeURIComponent(cryptoJsEncrypt(JSON.stringify(body), NXSHA_PASS, salt))}`, hdr);
