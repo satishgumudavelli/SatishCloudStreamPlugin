@@ -211,3 +211,120 @@ export const vidnestDecode = (data: string): string => {
   }
   return utf8Decode(base64ToBytes(t));
 };
+
+// ── CryptoJS-style passphrase AES (Nxsha): "Salted__" + salt[8] + AES-256-CBC, key and iv from MD5 chaining (OpenSSL EVP_BytesToKey) ──
+
+const MD5_S = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+const MD5_K = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0);
+
+const md5 = (msg: Uint8Array): Uint8Array => {
+  const len = msg.length;
+  const padded = new Uint8Array(((len + 8) >> 6 << 6) + 64);
+  padded.set(msg);
+  padded[len] = 0x80;
+  const dv = new DataView(padded.buffer);
+  dv.setUint32(padded.length - 8, (len << 3) >>> 0, true);
+  dv.setUint32(padded.length - 4, Math.floor(len / 536870912), true);
+  let a0 = 0x67452301, b0 = 0xefcdab89 | 0, c0 = 0x98badcfe | 0, d0 = 0x10325476;
+  for (let off = 0; off < padded.length; off += 64) {
+    let a = a0, b = b0, c = c0, d = d0;
+    for (let i = 0; i < 64; i++) {
+      let f: number, g: number;
+      if (i < 16) { f = (b & c) | (~b & d); g = i; }
+      else if (i < 32) { f = (d & b) | (~d & c); g = (5 * i + 1) & 15; }
+      else if (i < 48) { f = b ^ c ^ d; g = (3 * i + 5) & 15; }
+      else { f = c ^ (b | ~d); g = (7 * i) & 15; }
+      const t = (a + f + MD5_K[i] + dv.getUint32(off + g * 4, true)) | 0;
+      const s = MD5_S[(i >> 4) * 4 + (i & 3)];
+      a = d; d = c; c = b;
+      b = (b + ((t << s) | (t >>> (32 - s)))) | 0;
+    }
+    a0 = (a0 + a) | 0; b0 = (b0 + b) | 0; c0 = (c0 + c) | 0; d0 = (d0 + d) | 0;
+  }
+  const out = new Uint8Array(16);
+  const o = new DataView(out.buffer);
+  [a0, b0, c0, d0].forEach((v, i) => o.setUint32(i * 4, v >>> 0, true));
+  return out;
+};
+
+const concat = (...p: Uint8Array[]): Uint8Array => {
+  const out = new Uint8Array(p.reduce((n, x) => n + x.length, 0));
+  let at = 0;
+  for (const x of p) { out.set(x, at); at += x.length; }
+  return out;
+};
+
+const evpKeyIv = (pass: string, salt: Uint8Array): { key: Uint8Array; iv: Uint8Array } => {
+  let d: Uint8Array = new Uint8Array(0);
+  let prev: Uint8Array = new Uint8Array(0);
+  const pw = utf8Encode(pass);
+  while (d.length < 48) {
+    prev = md5(concat(prev, pw, salt));
+    d = concat(d, prev);
+  }
+  return { key: d.subarray(0, 32), iv: d.subarray(32, 48) };
+};
+
+const gmul = (a: number, b: number): number => {
+  let p = 0;
+  for (; b; b >>= 1) { if (b & 1) p ^= a; a = xtime(a); }
+  return p;
+};
+
+const decryptBlock = (k: { w: Uint8Array; rounds: number }, block: Uint8Array): Uint8Array => {
+  const inv = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) inv[SBOX[i]] = i;
+  const s = Uint8Array.from(block);
+  addKey(s, k.w, k.rounds);
+  for (let r = k.rounds - 1; r >= 0; r--) {
+    const t = Uint8Array.from(s);
+    for (let c = 0; c < 4; c++) for (let row = 0; row < 4; row++) s[row + 4 * ((c + row) % 4)] = t[row + 4 * c];
+    for (let i = 0; i < 16; i++) s[i] = inv[s[i]];
+    addKey(s, k.w, r);
+    if (r !== 0) {
+      for (let c = 0; c < 4; c++) {
+        const a0 = s[4 * c], a1 = s[4 * c + 1], a2 = s[4 * c + 2], a3 = s[4 * c + 3];
+        s[4 * c] = gmul(a0, 14) ^ gmul(a1, 11) ^ gmul(a2, 13) ^ gmul(a3, 9);
+        s[4 * c + 1] = gmul(a0, 9) ^ gmul(a1, 14) ^ gmul(a2, 11) ^ gmul(a3, 13);
+        s[4 * c + 2] = gmul(a0, 13) ^ gmul(a1, 9) ^ gmul(a2, 14) ^ gmul(a3, 11);
+        s[4 * c + 3] = gmul(a0, 11) ^ gmul(a1, 13) ^ gmul(a2, 9) ^ gmul(a3, 14);
+      }
+    }
+  }
+  return s;
+};
+
+const toUrlSafe = (b: Uint8Array) => bytesToBase64(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+/** CryptoJS.AES.encrypt(text, pass), written url-safe (+ → -, / → _, no "="). [salt] is 8 bytes. */
+export const cryptoJsEncrypt = (text: string, pass: string, salt: Uint8Array): string => {
+  const { key, iv } = evpKeyIv(pass, salt);
+  const k = expandKey(key);
+  const data = utf8Encode(text);
+  const pad = 16 - (data.length % 16);
+  const plain = concat(data, new Uint8Array(pad).fill(pad));
+  const out = new Uint8Array(plain.length);
+  let prev: Uint8Array = iv;
+  for (let i = 0; i < plain.length; i += 16) {
+    const blk = plain.subarray(i, i + 16).map((x, j) => x ^ prev[j]);
+    prev = encryptBlock(k, blk);
+    out.set(prev, i);
+  }
+  return toUrlSafe(concat(utf8Encode("Salted__"), salt, out));
+};
+
+/** The text of a CryptoJS.AES.encrypt result (url-safe or plain base64). */
+export const cryptoJsDecrypt = (token: string, pass: string): string => {
+  const raw = base64UrlToBytes(token);
+  const { key, iv } = evpKeyIv(pass, raw.subarray(8, 16));
+  const k = expandKey(key);
+  const body = raw.subarray(16);
+  const out = new Uint8Array(body.length);
+  let prev: Uint8Array = iv;
+  for (let i = 0; i + 16 <= body.length; i += 16) {
+    const blk = body.subarray(i, i + 16);
+    out.set(decryptBlock(k, blk).map((x, j) => x ^ prev[j]), i);
+    prev = blk;
+  }
+  return utf8Decode(out.subarray(0, out.length - out[out.length - 1]));
+};

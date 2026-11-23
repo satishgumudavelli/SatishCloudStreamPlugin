@@ -6,6 +6,6 @@
     "icon": "https://vidbox.wtf/logo.png",
     "type": "global",
     "disabled": false,
-    "hasSettings": true
+    "hasSettings": false
   }
 ]

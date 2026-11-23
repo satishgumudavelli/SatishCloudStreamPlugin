@@ -41,14 +41,15 @@ Asked together for a title's TMDB id; a server that is down or says no is skippe
 |---|---|
 | Vidrock | AES-256-GCM tokens (decrypted without checking the tag: it only reads what the server sent) |
 | Vidlink | the id is encoded by enc-dec.app first; mp4 files come with the Referer they need |
+| Nxsha | CryptoJS passphrase tokens (new key, 2026-11-23); asks the server list, then each server. Embed-only servers are skipped |
 | 111movies, Peachify, Vidnest, MovieNight, Movy, Vuflix, Xpass, 2Embed, Rive, Mplay | as the CloudStream provider did |
 
 Left out: **Max** (needs a WebAssembly decryptor), **CinemaOS** (key derivation too slow without native crypto; it has its own
 provider), **Frembed** (hands over to other sites' players), **Tongo** and **Bravo** (packed-script players that could not be
-checked), **Videasy** and **Nxsha** (checked live on 2026-11-23: Videasy's seed endpoint is gone, Nxsha's passphrase changed).
+checked), **Videasy** (checked live on 2026-11-23: its seed endpoint is gone).
 
 Checked live on 2026-11-23 (through Cloudflare WARP, on a network that resets the site's TLS): **Vidrock** (12 streams for a film and
-for an episode), **Vidlink** and **Rive** (an episode). Peachify was down (HTTP 523), Vidnest and MovieNight now ask for a token
+for an episode), **Vidlink** and **Rive** (an episode), **Nxsha** (14 streams for a film, 16 for an episode: castle, awsind, nitro, streamflix, purstream, ophim answer; vixolity and watchout answer but their files returned 403/400; the other servers it lists return 404). Peachify was down (HTTP 523), Vidnest and MovieNight now ask for a token
 the original code does not send, and 111movies, Movy and several Vidnest servers answered 403 to the WARP address used for the
 check. They may work from another network; they are kept because the site can bring them back.
 

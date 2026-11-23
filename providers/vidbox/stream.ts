@@ -3,6 +3,8 @@ import { decodeTarget, extractBalanced, getJson, getText } from "./api";
 import {
   aesGcmDecryptNoTag,
   base64UrlToBytes,
+  cryptoJsDecrypt,
+  cryptoJsEncrypt,
   hexToBytes,
   mvmDecode,
   utf8Decode,
@@ -14,7 +16,7 @@ import {
 //
 // Left out on purpose: the Max server (needs a WebAssembly decryptor), CinemaOS (key derivation too slow without native crypto; the
 // CinemaOS provider covers it), Frembed (hands over to other sites' players), Tongo and Bravo (packed-script players that could not
-// be checked live), and Videasy and Nxsha (checked live on 2026-11-23: Videasy's seed endpoint is gone, Nxsha's passphrase changed).
+// be checked live), and Videasy (checked live on 2026-11-23: its seed endpoint is gone).
 
 type Job = {
   id: number;
@@ -395,6 +397,39 @@ const rive: Server = async (j) => {
   return lists.flat();
 };
 
+// ── Nxsha (nxsha.space): every query and answer is a CryptoJS passphrase token; the server list is asked first, then each one ──
+const NXSHA = "https://nxsha.space";
+const NXSHA_PASS = "38c8cd65d781936f4b9fe1fd985234fd7335699855051abf76ea3493bcfc0120";
+
+const nxsha: Server = async (j) => {
+  const base: Record<string, unknown> = { tmdbId: String(j.id), imdb_id: "", type: isTv(j) ? "tv" : "movie" };
+  if (isTv(j)) Object.assign(base, { season: j.season, episode: j.episode });
+  const hdr = { Referer: `${NXSHA}/` };
+  const ask = async (path: string, extra: Record<string, unknown>): Promise<any> => {
+    const salt = Uint8Array.from({ length: 8 }, () => Math.floor(Math.random() * 256));
+    const body = { ...base, ...extra, _req_ts: Date.now(), _req_salt: Math.random().toString(36).slice(2, 12) };
+    const r = await json(j, `${NXSHA}/api/${path}?q=${encodeURIComponent(cryptoJsEncrypt(JSON.stringify(body), NXSHA_PASS, salt))}`, hdr);
+    return JSON.parse(cryptoJsDecrypt(r._hash, NXSHA_PASS));
+  };
+  const servers: any[] = ((await ask("servers", {})).servers || []).filter((s: any) => s?.scraper && s.enabled !== false && !s.disabled && s.web_support !== false && s.scraper !== "showbox-online");
+  const lists = await Promise.all(
+    servers.map(async (srv): Promise<Stream[]> => {
+      try {
+        const d = await ask("sources", { provider: srv.scraper });
+        return (d.sources || [])
+          .filter((s: any) => s?.url && !s.isEmbed)
+          .map((s: any) => {
+            const label = s.label || s.quality || "";
+            return stream(`Nxsha [${srv.scraper}] ${label}`.trim(), s.url, { kind: s.type === "mp4" ? "mp4" : "hls", quality: qualityOf(label), headers: headersOf(s.headers) || hdr });
+          });
+      } catch (e) {
+        return why(`nxsha ${srv.scraper}`, e);
+      }
+    }),
+  );
+  return lists.flat();
+};
+
 const SERVERS: [string, Server][] = [
   ["vidrock", vidrock],
   ["vidlink", vidlink],
@@ -408,6 +443,7 @@ const SERVERS: [string, Server][] = [
   ["movy", movy],
   ["movienight", movieNight],
   ["vuflix", vuflix],
+  ["nxsha", nxsha],
 ];
 
 export const getStream = async function ({
