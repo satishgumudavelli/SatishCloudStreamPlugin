@@ -1,0 +1,14 @@
+manifest.json
+  h_2f2e0daf8435ba 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c958e12783d888d6ddcfb14a0bcd27b482efc81e",
+  "prompts": {},
+  "humans": {
+    "h_2f2e0daf8435ba": {
+      "author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
