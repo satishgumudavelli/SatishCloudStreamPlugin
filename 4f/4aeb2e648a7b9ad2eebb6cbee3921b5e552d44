@@ -1,0 +1,21 @@
+dist/vidbox/stream.js
+  s_12ae78efcb2e42::t_51b0ada2bda904 3
+providers/vidbox/stream.ts
+  s_12ae78efcb2e42::t_e7798e1cc17840 408-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f4aeb2e648a7b9ad2eebb6cbee3921b5e552d44",
+  "prompts": {},
+  "sessions": {
+    "s_12ae78efcb2e42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b69992bc-95cb-470b-9047-9f9a6edc47a6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
