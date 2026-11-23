@@ -1,0 +1,27 @@
+providers/vidbox/stream.ts
+  s_12ae78efcb2e42::t_32d76da2cb53ae 6-7,19,400-432,446
+providers/vidbox/crypto.ts
+  s_12ae78efcb2e42::t_17ce7681ad4d19 258-259
+  s_12ae78efcb2e42::t_851886ef13146e 307,323
+  s_12ae78efcb2e42::t_a15d4b7c0b7e5b 214-257,260-306,308-322,324-330
+README.md
+  s_12ae78efcb2e42::t_a6371aed4b6c95 44,49,52
+dist/vidbox/stream.js
+  s_12ae78efcb2e42::t_b6ff54de52fc8c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c32201b3709d3185986d1d48b7f22117c5c6566a",
+  "prompts": {},
+  "sessions": {
+    "s_12ae78efcb2e42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b69992bc-95cb-470b-9047-9f9a6edc47a6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "satish.gumudavelli <satish.gumudavelli@kitchen365.com>"
+    }
+  }
+}
